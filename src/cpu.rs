@@ -169,3 +169,29 @@ impl ShowCPU for CPU<CpuInt, CpuFloat> {
         println!("}}");
     }
 }
+
+pub trait CpuGetter<CpuInt, CpuFloat> {
+    fn get_stack(&self) -> &Vec<CpuInt>;
+    fn get_port(&self) -> &[u8; 8];
+    fn get_register(&self) -> &[CpuInt; 8];
+    fn get_floating_point_register(&self) -> &[CpuFloat; 8];
+    fn get_jump_locations(&self) -> &Vec<JumpLocation>;
+}
+
+impl CpuGetter<CpuInt, CpuFloat> for CPU<CpuInt, CpuFloat> {
+    fn get_stack(&self) -> &Vec<CpuInt> {
+        &self.stack
+    }
+    fn get_port(&self) -> &[u8; 8] {
+        &self.port
+    }
+    fn get_register(&self) -> &[CpuInt; 8] {
+        &self.register
+    }
+    fn get_floating_point_register(&self) -> &[CpuFloat; 8] {
+        &self.floating_point_register
+    }
+    fn get_jump_locations(&self) -> &Vec<JumpLocation> {
+        &self.jump_locations
+    }
+}
