@@ -1,14 +1,17 @@
+type CpuInt = i64;
+type CpuFloat = f64;
+
 #[derive(Debug, Clone)]
 pub struct JumpLocation {
     pub name: String,
-    pub line:  usize,
+    pub line: usize,
 }
 
-pub trait OpCodes {
+pub trait OpCodes<CpuInt, CpuFloat> {
     // move value on the given register
-    fn mov(&mut self, register: usize, value: i64);
+    fn mov(&mut self, register: usize, value: CpuInt);
     // move value to the given floating register
-    fn mov_f(&mut self, f_register: usize, value: f64);
+    fn mov_f(&mut self, f_register: usize, value: CpuFloat);
     // add top 2 number from stack together and push them on the stack
     fn add(&mut self);
     // sub top 2 number from stack together and push them on the stack
@@ -18,9 +21,9 @@ pub trait OpCodes {
     // div top 2 number from stack together and push them on the stack
     fn div(&mut self);
     // add value to register
-    fn addi(&mut self, register: usize, value: i64);
+    fn addi(&mut self, register: usize, value: CpuInt);
     // add value to Float register
-    fn addf(&mut self, f_register: usize, value: f64);
+    fn addf(&mut self, f_register: usize, value: CpuFloat);
     // add two registers and put the result on the first register given
     fn addi_r(&mut self, register_1: usize, register_2: usize);
     // add two floating registers and put the result on the first floating register given
@@ -41,37 +44,43 @@ pub trait ShowCPU {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct CPU {
-    pub stack: Vec<i64>,
-    pub register: [i64; 8],
-    pub floating_point_register: [f64; 8],
+pub struct CPU<CpuInt, CpuFloat> {
+    pub stack: Vec<CpuInt>,
+    pub port: [u8; 8],
+    pub register: [CpuInt; 8],
+    pub floating_point_register: [CpuFloat; 8],
     pub jump_locations: Vec<JumpLocation>,
 }
-impl CPU {
+
+impl CPU<CpuInt, CpuFloat> {
     pub fn new() -> Self {
         CPU {
-            stack:                   Vec::new(),
-            register:                [0; 8],
+            stack: Vec::new(),
+            port: [0; 8],
+            register: [0; 8],
             floating_point_register: [0.0; 8],
-            jump_locations:           Vec::new(),
+            jump_locations: Vec::new(),
         }
     }
-    pub fn push_to_stack(&mut self, value: i64) {
+    pub fn push_to_stack(&mut self, value: CpuInt) {
         self.stack.push(value);
     }
-    pub fn pop_from_stack(&mut self) -> i64 {
+    pub fn pop_from_stack(&mut self) -> CpuInt {
         self.stack.pop().unwrap()
     }
     pub fn add_jump_location(&mut self, jump_loc_name: String, line: usize) {
-        self.jump_locations.push(JumpLocation { name: jump_loc_name, line })
+        self.jump_locations.push(JumpLocation {
+            name: jump_loc_name,
+            line,
+        })
     }
 }
 
-impl OpCodes for CPU {
-    fn mov(&mut self, register: usize, value: i64) {
+impl OpCodes<CpuInt, CpuFloat> for CPU<CpuInt, CpuFloat> {
+    fn mov(&mut self, register: usize, value: CpuInt) {
         self.register[register] = value;
     }
-    fn mov_f(&mut self, f_register: usize, value: f64) {
+    fn mov_f(&mut self, f_register: usize, value: CpuFloat) {
         self.floating_point_register[f_register] = value;
     }
     fn add(&mut self) -> () {
@@ -94,10 +103,10 @@ impl OpCodes for CPU {
         let b = self.pop_from_stack();
         self.push_to_stack(a / b);
     }
-    fn addi(&mut self, register: usize, value: i64) {
+    fn addi(&mut self, register: usize, value: CpuInt) {
         self.register[register] += value;
     }
-    fn addf(&mut self, f_register: usize, value: f64) {
+    fn addf(&mut self, f_register: usize, value: CpuFloat) {
         self.floating_point_register[f_register] += value;
     }
     fn addi_r(&mut self, register_1: usize, register_2: usize) {
@@ -113,11 +122,11 @@ impl OpCodes for CPU {
         }
     }
     fn jmp(&mut self, _jmp_loc_name: String) {
-        // todo!()
+        /* TODO */
     }
 }
 
-impl ShowCPU for CPU {
+impl ShowCPU for CPU<CpuInt, CpuFloat> {
     fn show_cpu(&self) {
         self.show_stack();
         self.show_register();

@@ -5,7 +5,9 @@ fn main() {
     use crate::cpu::*;
     //use crate::lexer::*;
     //let mut lexer = Lexer::new("".to_string());
-    let mut cpu = CPU::new();
+    type CpuInt = i64;
+    type CpuFloat = f64;
+    let mut cpu = CPU::<i64, f64>::new();
 
     cpu.mov(0, 999);
     cpu.mov(5, 8);
