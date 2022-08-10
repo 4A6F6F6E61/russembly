@@ -1,3 +1,9 @@
+#[derive(Debug, Clone)]
+pub struct JumpLocation {
+    pub name: String,
+    pub line:  usize,
+}
+
 pub trait OpCodes {
     // move value on the given register
     fn mov(&mut self, register: usize, value: i64);
@@ -19,6 +25,10 @@ pub trait OpCodes {
     fn addi_r(&mut self, register_1: usize, register_2: usize);
     // add two floating registers and put the result on the first floating register given
     fn addf_r(&mut self, f_register_1: usize, f_register_2: usize);
+    // decrement and jump if not zero
+    fn djnz(&mut self, register: usize, jmp_loc_name: String);
+    // jump to jmp_location
+    fn jmp(&mut self, jmp_loc_name: String);
 }
 
 pub trait ShowCPU {
@@ -26,6 +36,7 @@ pub trait ShowCPU {
     fn show_stack(&self);
     fn show_register(&self);
     fn show_floating_point_register(&self);
+    fn show_jump_locations(&self);
 }
 
 #[derive(Debug, Clone)]
@@ -34,13 +45,15 @@ pub struct CPU {
     pub stack: Vec<i64>,
     pub register: [i64; 8],
     pub floating_point_register: [f64; 8],
+    pub jump_locations: Vec<JumpLocation>,
 }
 impl CPU {
     pub fn new() -> Self {
         CPU {
-            stack: Vec::new(),
-            register: [0; 8],
+            stack:                   Vec::new(),
+            register:                [0; 8],
             floating_point_register: [0.0; 8],
+            jump_locations:           Vec::new(),
         }
     }
     pub fn push_to_stack(&mut self, value: i64) {
@@ -48,6 +61,9 @@ impl CPU {
     }
     pub fn pop_from_stack(&mut self) -> i64 {
         self.stack.pop().unwrap()
+    }
+    pub fn add_jump_location(&mut self, jump_loc_name: String, line: usize) {
+        self.jump_locations.push(JumpLocation { name: jump_loc_name, line })
     }
 }
 
@@ -90,42 +106,57 @@ impl OpCodes for CPU {
     fn addf_r(&mut self, f_register_1: usize, f_register_2: usize) {
         self.floating_point_register[f_register_1] += self.floating_point_register[f_register_2];
     }
+    fn djnz(&mut self, register: usize, jmp_loc_name: String) {
+        if self.register[register] != 0 {
+            self.register[register] -= 1;
+            self.jmp(jmp_loc_name);
+        }
+    }
+    fn jmp(&mut self, _jmp_loc_name: String) {
+        // todo!()
+    }
 }
 
 impl ShowCPU for CPU {
     fn show_cpu(&self) {
         self.show_stack();
         self.show_register();
-        self.show_floating_point_register()
+        self.show_floating_point_register();
+        self.show_jump_locations();
     }
     fn show_stack(&self) {
         println!("Stack: {:?}", self.stack);
     }
     fn show_register(&self) {
-        print!("Register: ");
-        print!("{{ ");
+        print!("Register:                {{ ");
         self.register.iter().enumerate().for_each(|(i, x)| {
             if i == 0 {
-                print!("{}", x);
+                print!("R{}: {}", i, x);
             } else {
-                print!(", {}", x);
+                print!(", R{}: {}", i, x);
             }
         });
         println!(" }}");
     }
     fn show_floating_point_register(&self) {
-        print!("Floating Point Register: ");
-        print!("{{ ");
+        print!("Floating Point Register: {{ ");
         self.floating_point_register
             .iter()
             .enumerate()
             .for_each(|(i, x)| {
                 if i == 0 {
-                    print!("{}", x);
+                    print!("R{}: {}", i, x);
                 } else {
-                    print!(", {}", x);
+                    print!(", R{}: {}", i, x);
                 }
             });
         println!(" }}");
+    }
+    fn show_jump_locations(&self) {
+        println!("Jump Locations: {{");
+        self.jump_locations.iter().for_each(|x| {
+            println!("    {:?}", x);
+        });
+        println!("}}");
     }
 }
