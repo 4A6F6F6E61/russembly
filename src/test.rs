@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::cpu::{mov, CpuGetter, OpCodes, CPU};
+use crate::cpu::{CpuGetter, OpCodes, CPU};
 
 #[test]
 fn add() -> () {

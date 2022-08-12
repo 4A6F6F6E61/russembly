@@ -1,5 +1,3 @@
-use crate::cpu::OpCodes;
-
 mod cpu;
 mod lexer;
 mod test;

@@ -1,5 +1,4 @@
 use conv::prelude::*;
-use std::iter::Successors;
 
 type CPUType = f64;
 
