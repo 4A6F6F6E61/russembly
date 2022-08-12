@@ -1,0 +1,15 @@
+main {
+    push 10
+    push 20
+    pop
+    prnt Stack
+    jmp test
+}
+
+test {
+    push 30
+    push 40
+    pop
+    prnt Stack
+    end
+}
