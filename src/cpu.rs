@@ -1,8 +1,7 @@
-use std::iter::Successors;
 use conv::prelude::*;
+use std::iter::Successors;
 
 type CPUType = f64;
-
 
 #[derive(Debug, Clone)]
 pub struct JumpLocation {
@@ -12,9 +11,13 @@ pub struct JumpLocation {
 
 pub trait OpCodes<CPUType> {
     // Move value into Port
-    fn mov<T>(&mut self, port: usize, value: T) where CPUType: ValueFrom<T>;
+    fn mov<T>(&mut self, port: usize, value: T)
+    where
+        CPUType: ValueFrom<T>;
     // move value on the Accumulator
-    fn mova<T>(&mut self, value: T) where CPUType: ValueFrom<T>;
+    fn mova<T>(&mut self, value: T)
+    where
+        CPUType: ValueFrom<T>;
     // move value from Port to Accumulator
     fn mova_p(&mut self, port: usize);
     // add top 2 number from stack together and push them on the stack
@@ -36,7 +39,6 @@ pub trait OpCodes<CPUType> {
     // set Bit to 1
     fn setb(&mut self, port: usize, bit: usize);
 }
-
 
 pub trait ShowCPU {
     fn show_cpu(&self);
@@ -79,12 +81,14 @@ impl CPU<CPUType> {
 
 impl OpCodes<CPUType> for CPU<CPUType> {
     fn mov<T>(&mut self, port: usize, value: T)
-        where CPUType: ValueFrom<T>
+    where
+        CPUType: ValueFrom<T>,
     {
         self.port[port] = value.value_as::<CPUType>().unwrap();
     }
     fn mova<T>(&mut self, value: T)
-        where CPUType: ValueFrom<T>
+    where
+        CPUType: ValueFrom<T>,
     {
         self.accumulator = value.value_as::<CPUType>().unwrap();
     }
