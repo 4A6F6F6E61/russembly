@@ -1,3 +1,3 @@
 # russembly
 
-Assymbly-like language written in rust
+Assembly-like language written in rust
