@@ -1,9 +1,9 @@
 #[cfg(test)]
-use crate::cpu::{CpuGetter, OpCodes, CPU};
+use crate::cpu::cpu::{CPUType, CpuGetter, OpCodes, CPU};
 
 #[test]
 fn add() -> () {
-    let mut cpu = CPU::<f64>::new();
+    let mut cpu = CPU::<CPUType>::new();
     // Integer Register
     cpu.mov(0, 10);
     cpu.mov(1, 8);
@@ -20,7 +20,7 @@ fn add() -> () {
 #[test]
 #[cfg(test)]
 fn minus() -> () {
-    let mut cpu = CPU::<f64>::new();
+    let mut cpu = CPU::<CPUType>::new();
     cpu.mov(0, 10.0);
     cpu.mov(1, 8.0);
     // not implemented yet
