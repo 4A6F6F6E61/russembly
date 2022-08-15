@@ -1,4 +1,4 @@
-use crate::{cpu::main::*, cpu::traits::*, cpu::CPUType};
+use crate::{cpu::main::*, cpu::CPUType};
 use conv::prelude::*;
 
 impl OpCodes<CPUType> for CPU<CPUType> {
@@ -52,7 +52,7 @@ impl OpCodes<CPUType> for CPU<CPUType> {
     fn jmp(&mut self, _jmp_loc_name: String) {
         /* TODO */
     }
-    fn setb(&mut self, port: usize, bit: usize) {
+    fn setb(&mut self, _port: usize, _bit: usize) {
         //self.port[port] |= 1 << bit;
     }
 }

@@ -3,6 +3,6 @@ pub mod jump_location;
 pub mod main;
 pub mod opcodes;
 pub mod show;
-pub mod traits;
+//pub mod traits;
 
 pub type CPUType = f64;

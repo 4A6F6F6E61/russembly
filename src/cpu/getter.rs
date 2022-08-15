@@ -1,4 +1,4 @@
-use crate::{cpu::jump_location::JumpLocation, cpu::main::*, cpu::traits::*, cpu::CPUType};
+use crate::{cpu::jump_location::JumpLocation, cpu::main::*, cpu::CPUType};
 
 impl CpuGetter<CPUType> for CPU<CPUType> {
     fn get_stack(&self) -> &Vec<CPUType> {

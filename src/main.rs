@@ -2,12 +2,12 @@ mod cpu;
 mod lexer;
 mod test;
 
-use crate::{cpu::main::*, cpu::traits::*};
+use crate::{cpu::main::*};
 
 fn main() {
     //use crate::lexer::*;
     //let mut lexer = Lexer::new("".to_string());
-    let mut cpu = match CPU::<f64>::new() {
+    let mut cpu = match CPU::new() {
         Ok(cpu) => cpu,
         Err(err) => {
             println!("{}", err);
