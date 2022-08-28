@@ -1,29 +1,112 @@
 #[cfg(test)]
-use crate::cpu::cpu::{CPUType, CpuGetter, OpCodes, CPU};
+use crate::cpu::main::*;
 
-#[test]
-fn add() -> () {
-    let mut cpu = CPU::<CPUType>::new();
-    // Integer Register
-    cpu.mov(0, 10);
-    cpu.mov(1, 8);
-    cpu.addi_p(0, 1);
-    // Stack
-    cpu.push_to_stack(10.0);
-    cpu.push_to_stack(8.0);
-    cpu.add();
-
-    assert_eq!(cpu.get_port()[0], 18.0);
-    assert_eq!(cpu.pop_from_stack(), 18);
+macro_rules! new {
+    (let $name:ident = new $type:ty;) => {
+        let $name = match <$type>::new() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+    };
+    (let mut $name:ident = new $type:ty;) => {
+        let mut $name = match <$type>::new() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+    };
+    (
+        let $name:ident = new $type:ty;
+        $($rest:tt)*
+    ) => {
+        let $name = match <$type>::new() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+        new! {
+            $($rest)*
+        }
+    };
+    (
+        let mut $name:ident = new $type:ty;
+        $($rest:tt)*
+    ) => {
+        let mut $name = match <$type>::new() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+        new! {
+            $($rest)*
+        }
+    };
 }
 
 #[test]
-#[cfg(test)]
+fn add() -> () {
+    new! {
+        let mut cpu = new CPU<usize>;
+        let _cpu2 = new CPU<usize>;
+        let mut cpu3 = new CPU<usize>;
+    };
+    let mut cpu4 = CPU::new().unwrap();
+    // Integer Register
+    cpu.mov(0, 10);
+    cpu.mova(8);
+    cpu.addp(0);
+    assert_eq!(cpu.get_accumulator(), &18);
+    // Stack
+    cpu.push_to_stack(10);
+    cpu.push_to_stack(8);
+    cpu.add();
+    assert_eq!(cpu.pop_from_stack(), 18);
+
+    cpu3.push_to_stack(10);
+    cpu3.show_cpu();
+}
+
+#[test]
 fn minus() -> () {
-    let mut cpu = CPU::<CPUType>::new();
-    cpu.mov(0, 10.0);
-    cpu.mov(1, 8.0);
+    new! {
+        let mut cpu = new CPU<usize>;
+    };
+    cpu.mov(0, 10);
+    cpu.mova(8);
     // not implemented yet
-    cpu.subi_p(0, 1);
-    assert_eq!(cpu.get_register()[0], 18);
+    cpu.subp(0);
+    assert_eq!(cpu.get_port(0), 18);
+}
+
+#[test]
+fn set_bit() -> () {
+    new! {
+        let mut cpu = new CPU<usize>;
+    };
+
+    cpu.setb("P0^0".to_string());
+    assert_eq!(cpu.get_port(0), 0);
+    cpu.setb("P0^10".to_string());
+    assert_eq!(cpu.get_port(0), 1024)
+}
+
+#[test]
+fn max_usize() -> () {
+    new! {
+        let mut cpu = new CPU<usize>;
+    };
+
+    for i in 0..usize::BITS {
+        cpu.setb(format!("P0^{}", i));
+    }
+    assert_eq!(cpu.get_port(0), usize::MAX) // 18446744073709551615
 }

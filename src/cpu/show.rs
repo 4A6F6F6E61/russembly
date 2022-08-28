@@ -14,9 +14,9 @@ impl ShowCPU for CPU<CPUType> {
         print!("Port:           {{ ");
         self.port.iter().enumerate().for_each(|(i, x)| {
             if i == 0 {
-                print!("P{}: {}", i, x);
+                print!("P{}: 0x{:x}", i, x);
             } else {
-                print!(", P{}: {}", i, x);
+                print!(", P{}: 0x{:x}", i, x);
             }
         });
         println!(" }}");

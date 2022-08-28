@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod getter;
 pub mod jump_location;
 pub mod main;
@@ -5,4 +6,4 @@ pub mod opcodes;
 pub mod show;
 //pub mod traits;
 
-pub type CPUType = f64;
+pub type CPUType = usize;

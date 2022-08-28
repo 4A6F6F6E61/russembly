@@ -1,15 +1,16 @@
-main {
-    push 10
-    push 20
+fn main {
+    push P1^1, 20
+    push A, 1gfg
+    add  A, P1^1
     pop
     prnt Stack
-    jmp test
+    call test
 }
 
-test {
+fn test {
     push 30
-    push 40
+    push 40 # This is a comment!
     pop
     prnt Stack
-    end
 }
+end

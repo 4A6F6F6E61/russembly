@@ -4,8 +4,8 @@ impl CpuGetter<CPUType> for CPU<CPUType> {
     fn get_stack(&self) -> &Vec<CPUType> {
         &self.stack
     }
-    fn get_port(&self) -> &[CPUType; 8] {
-        &self.port
+    fn get_port(&self, port: usize) -> CPUType {
+        self.port[port]
     }
     fn get_accumulator(&self) -> &CPUType {
         &self.accumulator
