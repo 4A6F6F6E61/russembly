@@ -1,6 +1,4 @@
-use conv::ValueFrom;
-
-use crate::cpu::CPUType;
+use crate::cpu::{jump_location::JumpLocation, main::CPU, CPUType};
 
 #[derive(Clone, Debug)]
 pub struct Token {
@@ -8,49 +6,68 @@ pub struct Token {
     pub value: String,
 }
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
     OpCode,
     Accumulator,
     Port,
-    JumpLocation,
+    JumpLocation(JumpLocation),
     FunctionName,
     Bracket,
     Keyword,
     String,
-    Number,
+    Number(CPUType),
     Comment,
     Comma,
 }
 
+#[derive(Debug)]
 pub enum LexerError {
     NoFunctionNameGiven,
     UnexpectedInstruction,
+    ExpectedFunctionName,
+    TokenListIsEmpty,
 }
 
 #[derive(Clone, Debug)]
 pub struct Lexer {
     tokens: Vec<Token>,
     strings: Vec<String>,
+    line_number: usize,
 }
 impl Lexer {
     pub fn new() -> Lexer {
         Lexer {
             tokens: Vec::new(),
             strings: Vec::new(),
+            line_number: 0,
         }
     }
     pub fn run(&mut self, line: String) -> Result<(), LexerError> {
+        self.line_number += 1;
         self.generate_strings(line);
         let mut string_iter = self.strings.iter().peekable();
         while string_iter.peek().is_some() {
             let str = string_iter.next().unwrap();
             match str.as_str() {
-                "push" | "mov" | "add" | "sub" | "mul" | "div" | "djnz" | "jmp" | "setb"
-                | "end" => {
+                "push" | "pop" | "mov" | "add" | "sub" | "mul" | "div" | "djnz" | "jmp"
+                | "setb" | "end" | "prnt" => {
                     self.tokens.push(Token {
                         token_type: TokenType::OpCode,
                         value: str.to_string(),
+                    });
+                }
+                "call" => {
+                    self.tokens.push(Token {
+                        token_type: TokenType::OpCode,
+                        value: str.to_string(),
+                    });
+                    if !string_iter.peek().is_some() {
+                        return Err(LexerError::ExpectedFunctionName);
+                    }
+                    self.tokens.push(Token {
+                        token_type: TokenType::FunctionName,
+                        value: string_iter.next().unwrap().to_string(),
                     });
                 }
                 "{" | "}" | "[" | "]" | "(" | ")" => {
@@ -115,15 +132,26 @@ impl Lexer {
                             value: comment,
                         });
                         continue;
+                    } else if str.ends_with(":") {
+                        let mut tmp = str.chars();
+                        tmp.next_back();
+                        self.tokens.push(Token {
+                            token_type: TokenType::JumpLocation(JumpLocation {
+                                name: tmp.as_str().to_string(),
+                                line: self.line_number,
+                            }),
+                            value: str.to_string(),
+                        });
                     } else {
                         match str.parse::<CPUType>() {
-                            Ok(_) => {
+                            Ok(x) => {
                                 self.tokens.push(Token {
-                                    token_type: TokenType::Number,
+                                    token_type: TokenType::Number(x),
                                     value: str.to_string(),
                                 });
                             }
                             Err(_) => {
+                                println!("\n--------\n{}\n---------\n", str);
                                 return Err(LexerError::UnexpectedInstruction);
                             }
                         }
@@ -157,5 +185,22 @@ impl Lexer {
         if temp_string.len() > 0 {
             self.strings.push(temp_string);
         }
+    }
+
+    pub fn get_tokens(self) -> Result<Vec<Token>, LexerError> {
+        if self.tokens.is_empty() {
+            Err(LexerError::TokenListIsEmpty)
+        } else {
+            Ok(self.tokens)
+        }
+    }
+
+    pub fn show_tokens(self) {
+        self.tokens.iter().for_each(|token| {
+            println!("Token {{");
+            println!("  TokenType: {:?}", token.token_type);
+            println!("  Value    : {:?}", token.value);
+            println!("}}")
+        })
     }
 }

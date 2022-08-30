@@ -69,7 +69,7 @@ fn add() -> () {
     cpu.push_to_stack(10);
     cpu.push_to_stack(8);
     cpu.add();
-    assert_eq!(cpu.pop_from_stack(), 18);
+    assert_eq!(cpu.pop_from_stack(), Some(18));
 
     cpu3.push_to_stack(10);
     cpu3.show_cpu();

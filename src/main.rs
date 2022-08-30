@@ -13,15 +13,17 @@ fn main() {
         }
     };
 
-    cpu.load_file("./src/syntax.rusm").expect("");
+    let tokens = cpu.load_file("./src/testing.rusm").expect("");
 
-    cpu.setb("P1^64".to_string());
+    cpu.run_tokens(tokens).unwrap();
+
+    //cpu.setb("P1^64".to_string());
 
     //cpu.pop_from_stack();
 
-    for i in 0..usize::BITS {
+    /*for i in 0..usize::BITS {
         cpu.setb(format!("P0^{}", i));
-    }
+    }*/
     //cpu.mova(8);
     //cpu.mova(90);
     //cpu.addp(0);

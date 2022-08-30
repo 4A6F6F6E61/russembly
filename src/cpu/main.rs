@@ -1,8 +1,9 @@
-use crate::lexer::Lexer;
+use crate::lexer::{Lexer, LexerError, Token, TokenType};
 use crate::{cpu::jump_location::JumpLocation, cpu::CPUType};
 use conv::prelude::*;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::num::ParseIntError;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -26,31 +27,24 @@ impl CPU<CPUType> {
     pub fn push_to_stack(&mut self, value: CPUType) {
         self.stack.push(value);
     }
-    pub fn pop_from_stack(&mut self) -> Result<CPUType, String> {
-        Ok(self
-            .stack
-            .pop()
-            .expect("Unable to pop from stack. \nTip: Check if it's empty"))
-        /*match self.stack.pop() {
-            Ok(x) => Ok(x),
-            Err => Result::Err("Unable to pop from stack. \nTip: Check if it's empty".to_string())
-        }*/
+    pub fn pop_from_stack(&mut self) -> Option<usize> {
+        self.stack.pop()
     }
+    #[allow(dead_code)]
     pub fn add_jump_location(&mut self, name: String, line: usize) {
         self.jump_locations.push(JumpLocation { name, line })
     }
 
-    pub fn load_file(&mut self, path: &str) -> Result<(), String> {
+    pub fn load_file(&mut self, path: &str) -> Result<Vec<Token>, LexerError> {
         let mut lexer = Lexer::new();
         if let Ok(lines) = self.read_lines(path) {
-            for line in lines {
+            lines.for_each(|line| {
                 let l = line.unwrap();
-                print!("{}", l);
-                lexer.run(l);
-            }
+                lexer.run(l).expect("Unable to parse line");
+            });
         }
-        println!("{:?}", lexer);
-        Ok(())
+        lexer.clone().show_tokens();
+        lexer.get_tokens()
     }
 
     fn read_lines<P>(&mut self, filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -59,6 +53,80 @@ impl CPU<CPUType> {
     {
         let file = File::open(filename)?;
         Ok(io::BufReader::new(file).lines())
+    }
+
+    pub fn run_tokens(&mut self, tokens: Vec<Token>) -> Result<(), &str> {
+        let mut token_iter = tokens.iter().peekable();
+
+        while token_iter.peek().is_some() {
+            let token = token_iter.next().unwrap();
+            match &token.token_type {
+                TokenType::OpCode => match token.value.as_str() {
+                    "push" => match token_iter.next().unwrap().token_type {
+                        TokenType::Number(x) => self.stack.push(x),
+                        _ => {
+                            return Err("Error: You can only push Numbers to the Stack!");
+                        }
+                    },
+                    "pop" => {
+                        self.stack.pop();
+                    }
+                    "mov" => {
+                        let port_or_accu = token_iter.next().unwrap();
+                        match token_iter.next().unwrap().token_type {
+                            TokenType::Comma => {}
+                            _ => {
+                                return Err("Error: Expected Comma");
+                            }
+                        }
+                        let value = token_iter.next().unwrap();
+                        match port_or_accu.token_type {
+                            TokenType::Port => {}
+                            TokenType::Accumulator => {
+                                self.accumulator = match value.token_type {
+                                    TokenType::Number(x) => x,
+                                    TokenType::Port => {
+                                        let port = self.get_port_from_str(value.value.clone()).unwrap(); // get the Port number
+                                        self.port[port]
+                                    }
+                                    _ => return Err("Error: You can only move a number or the value of a Port to the Accumulator")
+                                }
+                            }
+                            _ => {
+                                return Err("Error: Expected Port or Accu!");
+                            }
+                        }
+                    }
+                    "add" => {}
+                    "sub" => {}
+                    "mul" => {}
+                    "div" => {}
+                    "djnz" => {}
+                    "jmp" => {}
+                    "setb" => {}
+                    "end" => {}
+                    "prnt" => {}
+                    "call" => {}
+                    &_ => {}
+                },
+                TokenType::Accumulator => {}
+                TokenType::Port => {}
+                TokenType::JumpLocation(_jump_location) => {}
+                TokenType::FunctionName => {}
+                TokenType::Bracket => {}
+                TokenType::Keyword => {}
+                TokenType::String => {}
+                TokenType::Number(_) => {}
+                TokenType::Comment => {}
+                TokenType::Comma => {}
+            }
+        }
+        Ok(())
+    }
+    fn get_port_from_str(&mut self, port_str: String) -> Result<usize, ParseIntError> {
+        let mut chars = port_str.chars();
+        chars.next();
+        chars.as_str().parse::<usize>()
     }
 }
 /* Traits
