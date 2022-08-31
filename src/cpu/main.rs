@@ -43,7 +43,7 @@ impl CPU<CPUType> {
                 lexer.run(l).expect("Unable to parse line");
             });
         }
-        lexer.clone().show_tokens();
+        //lexer.clone().show_tokens();
         lexer.get_tokens()
     }
 
@@ -56,6 +56,8 @@ impl CPU<CPUType> {
     }
 
     pub fn run_tokens(&mut self, tokens: Vec<Token>) -> Result<(), &str> {
+        println!("\nOutput:");
+        println!("-----------------------------");
         let mut token_iter = tokens.iter().peekable();
 
         while token_iter.peek().is_some() {
@@ -160,6 +162,7 @@ impl CPU<CPUType> {
                 }
             }
         }
+        println!("-----------------------------\n");
         Ok(())
     }
     fn get_port_from_str(&mut self, port_str: String) -> Result<usize, ParseIntError> {

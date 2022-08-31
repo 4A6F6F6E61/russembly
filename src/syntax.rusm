@@ -1,8 +1,7 @@
 fn main {
-    push P1, 20
-    push A, 10
-    add  A, P1
-    pop
+    mov P1, 20
+    mov A, 10
+    mov A, P0
     call test
 }
 
@@ -12,5 +11,6 @@ fn test {
 jmp:
     pop
     prnt 10
+    nl
 }
 end
