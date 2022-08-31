@@ -71,9 +71,11 @@ impl CPU<CPUType> {
                     "pop" => {
                         self.stack.pop();
                     }
+                    // move value
                     "mov" => {
                         let port_or_accu = token_iter.next().unwrap();
                         match token_iter.next().unwrap().token_type {
+                            // check for comma
                             TokenType::Comma => {}
                             _ => {
                                 return Err("Error: Expected Comma");
@@ -81,7 +83,9 @@ impl CPU<CPUType> {
                         }
                         let value = token_iter.next().unwrap();
                         match port_or_accu.token_type {
+                            // push to port
                             TokenType::Port => {}
+                            // push to accumulator
                             TokenType::Accumulator => {
                                 self.accumulator = match value.token_type {
                                     TokenType::Number(x) => x,
@@ -97,15 +101,46 @@ impl CPU<CPUType> {
                             }
                         }
                     }
-                    "add" => {}
-                    "sub" => {}
-                    "mul" => {}
-                    "div" => {}
+                    // add top 2 number from stack together and push them on the stack
+                    "adds" => {
+                        let a = self.stack.pop().unwrap();
+                        let b = self.stack.pop().unwrap();
+                        self.stack.push(a + b);
+                    }
+                    // sub top 2 number from stack together and push them on the stack
+                    "subs" => {
+                        let a = self.stack.pop().unwrap();
+                        let b = self.stack.pop().unwrap();
+                        self.stack.push(a - b);
+                    }
+                    // mul top 2 number from stack together and push them on the stack
+                    "muls" => {
+                        let a = self.stack.pop().unwrap();
+                        let b = self.stack.pop().unwrap();
+                        self.stack.push(a * b);
+                    }
+                    // div top 2 number from stack together and push them on the stack
+                    "divs" => {
+                        let a = self.stack.pop().unwrap();
+                        let b = self.stack.pop().unwrap();
+                        self.stack.push(a / b);
+                    }
                     "djnz" => {}
                     "jmp" => {}
                     "setb" => {}
                     "end" => {}
-                    "prnt" => {}
+                    // print given string or number
+                    "prnt" => match token_iter.peek().unwrap().token_type {
+                        TokenType::String => {
+                            print!("{}", token_iter.next().unwrap().value)
+                        }
+                        TokenType::Number(x) => {
+                            print!("{}", x)
+                        }
+                        _ => {
+                            return Err("Error: Print only accepts Strings and Numbers");
+                        }
+                    },
                     "call" => {}
                     &_ => {}
                 },
@@ -119,6 +154,10 @@ impl CPU<CPUType> {
                 TokenType::Number(_) => {}
                 TokenType::Comment => {}
                 TokenType::Comma => {}
+                // Prints a new Line
+                TokenType::NewLine => {
+                    println!("")
+                }
             }
         }
         Ok(())

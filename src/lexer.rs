@@ -19,6 +19,7 @@ pub enum TokenType {
     Number(CPUType),
     Comment,
     Comma,
+    NewLine,
 }
 
 #[derive(Debug)]
@@ -50,8 +51,8 @@ impl Lexer {
         while string_iter.peek().is_some() {
             let str = string_iter.next().unwrap();
             match str.as_str() {
-                "push" | "pop" | "mov" | "add" | "sub" | "mul" | "div" | "djnz" | "jmp"
-                | "setb" | "end" | "prnt" => {
+                "push" | "pop" | "mov" | "add" | "sub" | "mul" | "div" | "adds" | "subs"
+                | "muls" | "divs" | "djnzs" | "jmp" | "setb" | "end" | "prnt" => {
                     self.tokens.push(Token {
                         token_type: TokenType::OpCode,
                         value: str.to_string(),
@@ -98,6 +99,7 @@ impl Lexer {
                         }
                         string.push_str(str);
                     }
+                    string = string.replace("\\n", "\n");
                     self.tokens.push(Token {
                         token_type: TokenType::String,
                         value: string,
@@ -113,6 +115,12 @@ impl Lexer {
                     self.tokens.push(Token {
                         token_type: TokenType::Comma,
                         value: str.to_string(),
+                    });
+                }
+                "nl" => {
+                    self.tokens.push(Token {
+                        token_type: TokenType::NewLine,
+                        value: "\n".to_string(),
                     });
                 }
                 _ => {
