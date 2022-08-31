@@ -1,4 +1,5 @@
 fn main {
+    let idk, 10
     push 10
     push 20
     mov A, 10

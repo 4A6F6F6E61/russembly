@@ -1,18 +1,46 @@
-use crate::lexer::{Lexer, LexerError, Token, TokenType};
-use crate::{cpu::jump_location::JumpLocation, cpu::CPUType};
-use conv::prelude::*;
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::num::ParseIntError;
-use std::path::Path;
+use {
+    crate::{
+        cpu::{jump_location::JumpLocation, printx, CPUType, PrintT},
+        lexer::{Lexer, Token, TokenType},
+        log,
+    },
+    conv::prelude::*,
+    std::{
+        fs::File,
+        io::{self, BufRead},
+        num::ParseIntError,
+        path::Path,
+        process::exit,
+    },
+};
+
+#[derive(Debug, Clone)]
+pub enum Var {
+    String(StringVar),
+    Number(NumberVar),
+}
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct StringVar {
+    name: String,
+    value: String,
+}
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct NumberVar {
+    name: String,
+    value: CPUType,
+}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct CPU<CPUType> {
     pub stack: Vec<CPUType>,
     pub port: [CPUType; 8],
+    pub vars: Vec<Var>,
     pub accumulator: CPUType,
     pub jump_locations: Vec<JumpLocation>,
+    pub error_count: usize,
 }
 
 impl CPU<CPUType> {
@@ -20,8 +48,10 @@ impl CPU<CPUType> {
         Ok(CPU {
             stack: Vec::new(),
             port: [0; 8],
+            vars: Vec::new(),
             accumulator: 0,
             jump_locations: Vec::new(),
+            error_count: 0,
         })
     }
     pub fn push_to_stack(&mut self, value: CPUType) {
@@ -35,15 +65,30 @@ impl CPU<CPUType> {
         self.jump_locations.push(JumpLocation { name, line })
     }
 
-    pub fn load_file(&mut self, path: &str) -> Result<Vec<Token>, LexerError> {
+    pub fn load_file(&mut self, path: &str) -> Result<Vec<Token>, ()> {
         let mut lexer = Lexer::new();
+        let mut lexer_error_c = 0usize;
+        let mut line_count = 0;
+
+        if let Ok(file) = self.read_lines(path) {
+            line_count = file.count();
+        }
         if let Ok(lines) = self.read_lines(path) {
             lines.for_each(|line| {
                 let l = line.unwrap();
-                lexer.run(l).expect("Unable to parse line");
+                lexer_error_c += lexer.run(l, line_count);
             });
+            log!(
+                Lexer,
+                f("Parsing the tokens returned {} errors", lexer_error_c)
+            );
+            if lexer_error_c != 0 {
+                exit(1)
+            }
+            log!(Info, "Finished parsing tokens");
+        } else {
+            log!(Error, "Unable to read lines");
         }
-        //lexer.clone().show_tokens();
         lexer.get_tokens()
     }
 
@@ -55,7 +100,8 @@ impl CPU<CPUType> {
         Ok(io::BufReader::new(file).lines())
     }
 
-    pub fn run_tokens(&mut self, tokens: Vec<Token>) -> Result<(), &str> {
+    pub fn run_tokens(&mut self, tokens: Vec<Token>) {
+        let mut error_count = 0usize;
         println!("\nOutput:");
         println!("-----------------------------");
         let mut token_iter = tokens.iter().peekable();
@@ -67,7 +113,8 @@ impl CPU<CPUType> {
                     "push" => match token_iter.next().unwrap().token_type {
                         TokenType::Number(x) => self.stack.push(x),
                         _ => {
-                            return Err("Error: You can only push Numbers to the Stack!");
+                            error_count += 1;
+                            log!(Error, "You can only push Numbers to the Stack!");
                         }
                     },
                     "pop" => {
@@ -80,7 +127,8 @@ impl CPU<CPUType> {
                             // check for comma
                             TokenType::Comma => {}
                             _ => {
-                                return Err("Error: Expected Comma");
+                                error_count += 1;
+                                log!(Error, "Expected Comma");
                             }
                         }
                         let value = token_iter.next().unwrap();
@@ -92,14 +140,20 @@ impl CPU<CPUType> {
                                 self.accumulator = match value.token_type {
                                     TokenType::Number(x) => x,
                                     TokenType::Port => {
-                                        let port = self.get_port_from_str(value.value.clone()).unwrap(); // get the Port number
+                                        let port =
+                                            self.get_port_from_str(value.value.clone()).unwrap(); // get the Port number
                                         self.port[port]
                                     }
-                                    _ => return Err("Error: You can only move a number or the value of a Port to the Accumulator")
+                                    _ => {
+                                        error_count += 1;
+                                        log!(Error,"You can only move a number or the value of a Port to the Accumulator");
+                                        continue;
+                                    }
                                 }
                             }
                             _ => {
-                                return Err("Error: Expected Port or Accu!");
+                                error_count += 1;
+                                log!(Error, "Expected Port or Accu!");
                             }
                         }
                     }
@@ -137,33 +191,94 @@ impl CPU<CPUType> {
                             print!("{}", token_iter.next().unwrap().value)
                         }
                         TokenType::Number(x) => {
+                            token_iter.next();
                             print!("{}", x)
                         }
                         _ => {
-                            return Err("Error: Print only accepts Strings and Numbers");
+                            error_count += 1;
+                            log!(Error, "Print only accepts Strings and Numbers");
                         }
                     },
                     "call" => {}
                     &_ => {}
                 },
-                TokenType::Accumulator => {}
-                TokenType::Port => {}
                 TokenType::JumpLocation(_jump_location) => {}
-                TokenType::FunctionName => {}
                 TokenType::Bracket => {}
-                TokenType::Keyword => {}
+                TokenType::Keyword => {
+                    match token.value.as_str() {
+                        "fn" => {
+                            token_iter.next();
+                            token_iter.next();
+                        }
+                        "let" => {
+                            let mut nt = match token_iter.next() {
+                                Some(x) => x,
+                                None => {
+                                    error_count += 1;
+                                    log!(Error, "Expected Arguments after let");
+                                    continue;
+                                }
+                            };
+                            let var_name = match nt.token_type {
+                                TokenType::VarName => nt.value.as_str(),
+                                _ => {
+                                    error_count += 1;
+                                    log!(Error, "Expected variable name");
+                                    continue;
+                                }
+                            };
+                            match token_iter.next().expect("Error: Expected Comma").token_type {
+                                TokenType::Comma => { /* Do nothing, just for checking*/ }
+                                _ => {
+                                    error_count += 1;
+                                    log!(Error, "Expected Comma");
+                                }
+                            }
+                            nt = token_iter.next().expect("Error: Expected value for let");
+                            match nt.token_type {
+                                TokenType::String => {
+                                    self.vars.push(Var::String(StringVar {
+                                        name: var_name.to_string(),
+                                        value: nt.clone().value,
+                                    }));
+                                }
+                                TokenType::Number(x) => {
+                                    self.vars.push(Var::Number(NumberVar {
+                                        name: var_name.to_string(),
+                                        value: x,
+                                    }));
+                                }
+                                _ => {
+                                    printx(
+                                        PrintT::Error,
+                                        "You can only store Strings and Numbers inside a Variable",
+                                    );
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 TokenType::String => {}
-                TokenType::Number(_) => {}
                 TokenType::Comment => {}
-                TokenType::Comma => {}
                 // Prints a new Line
                 TokenType::NewLine => {
                     println!("")
                 }
+                _ => {
+                    printx(
+                        PrintT::Error,
+                        format!("unexpected token '{}' at line {}", token.value, token.line)
+                            .as_str(),
+                    );
+                }
             }
         }
+        log!(
+            Cpu,
+            f("Interpreting the tokens returned {} errors", error_count)
+        );
         println!("-----------------------------\n");
-        Ok(())
     }
     fn get_port_from_str(&mut self, port_str: String) -> Result<usize, ParseIntError> {
         let mut chars = port_str.chars();
@@ -213,6 +328,7 @@ pub trait ShowCPU {
     fn show_stack(&self);
     fn show_port(&self);
     fn show_jump_locations(&self);
+    fn show_vars(&self);
 }
 
 pub trait CpuGetter<CPUType> {

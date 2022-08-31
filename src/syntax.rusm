@@ -1,8 +1,10 @@
 fn main {
+    let idk, 10
+    let s, "hello"
     mov P1, 20
     mov A, 10
     mov A, P0
-    call test
+    #call test
 }
 
 fn test {

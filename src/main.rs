@@ -15,7 +15,8 @@ fn main() {
 
     let tokens = cpu.load_file("./src/syntax.rusm").expect("");
     cpu.mov(0, 19);
-    cpu.run_tokens(tokens).unwrap();
+
+    cpu.run_tokens(tokens);
 
     //cpu.setb("P1^64".to_string());
 

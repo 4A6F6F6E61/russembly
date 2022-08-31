@@ -6,6 +6,7 @@ impl ShowCPU for CPU<CPUType> {
         self.show_port();
         println!("Accumulator:    {}", self.get_accumulator());
         self.show_jump_locations();
+        self.show_vars();
     }
     fn show_stack(&self) {
         println!("Stack:          {:?}", self.stack);
@@ -24,6 +25,13 @@ impl ShowCPU for CPU<CPUType> {
     fn show_jump_locations(&self) {
         println!("Jump Locations: {{");
         self.jump_locations.iter().for_each(|x| {
+            println!("    {:?}", x);
+        });
+        println!("}}");
+    }
+    fn show_vars(&self) {
+        println!("Vars: {{");
+        self.vars.iter().for_each(|x| {
             println!("    {:?}", x);
         });
         println!("}}");

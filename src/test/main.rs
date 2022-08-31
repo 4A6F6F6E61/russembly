@@ -1,3 +1,4 @@
+#![allow(unused_macros)]
 #[cfg(test)]
 use crate::cpu::main::*;
 
@@ -59,7 +60,6 @@ fn add() -> () {
         let _cpu2 = new CPU<usize>;
         let mut cpu3 = new CPU<usize>;
     };
-    let mut cpu4 = CPU::new().unwrap();
     // Integer Register
     cpu.mov(0, 10);
     cpu.mova(8);
