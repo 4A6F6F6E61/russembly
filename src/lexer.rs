@@ -39,8 +39,8 @@ pub struct Lexer {
 impl Lexer {
     pub fn new() -> Lexer {
         Lexer {
-            tokens: Vec::new(),
-            strings: Vec::new(),
+            tokens: vec![],
+            strings: vec![],
             line_number: 0,
         }
     }
@@ -238,12 +238,12 @@ impl Lexer {
         }
     }
 
-    pub fn get_tokens(self) -> Result<Vec<Token>, ()> {
+    pub fn get_tokens(self) -> Option<Vec<Token>> {
         if self.tokens.is_empty() {
             log!(Error, "No tokens found is empty");
             exit(1);
         }
-        Ok(self.tokens)
+        Some(self.tokens)
     }
 
     #[allow(dead_code)]

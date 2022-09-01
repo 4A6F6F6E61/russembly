@@ -13,10 +13,10 @@ fn main() {
         }
     };
 
-    let tokens = cpu.load_file("./src/syntax.rusm").expect("");
-    cpu.mov(0, 19);
-
-    cpu.run_tokens(tokens);
+    if let Some(tokens) = cpu.load_file("./src/syntax.rusm") {
+        cpu.mov(0, 19);
+        cpu.run_tokens(tokens);
+    }
 
     //cpu.setb("P1^64".to_string());
 

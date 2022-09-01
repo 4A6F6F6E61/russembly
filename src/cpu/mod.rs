@@ -5,6 +5,7 @@ pub mod jump_location;
 pub mod main;
 pub mod opcodes;
 pub mod show;
+pub mod run;
 
 pub type CPUType = usize;
 

@@ -4,7 +4,7 @@ struct Stack<T> {
 }
 impl Stack<T> as Vec<T> {
     pub fn new() -> Stack {
-        Vec::new()
+        vec![]
     }
     pub fn push(&mut self, item: i32) {
         self.push(item)
