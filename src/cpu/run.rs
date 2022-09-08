@@ -1,18 +1,18 @@
+use crate::{
+    cpu::{main::*, printx, CPUType, PrintT},
+    lexer::{Token, TokenType},
+    log,
+};
 use std::iter::Peekable;
 use std::slice::Iter;
-use {
-    crate::{
-        cpu::{printx, CPUType, PrintT, main::*},
-        lexer::{Token, TokenType},
-        log,
-    },
-};
 
 impl Run for CPU<CPUType> {
     fn run_tokens(&mut self, tokens: Vec<Token>) {
         let mut error_count = 0usize;
+        self.output = vec![];
         println!("\nOutput:");
         println!("-----------------------------");
+        self.log_clean("\nOutput:\n-----------------------------");
         let mut token_iter = tokens.iter().peekable();
 
         while token_iter.peek().is_some() {
@@ -21,9 +21,7 @@ impl Run for CPU<CPUType> {
                 TokenType::OpCode => self.run_opcodes(&mut error_count, &mut token_iter, token),
                 TokenType::JumpLocation(_jump_location) => {}
                 TokenType::Bracket => {}
-                TokenType::Keyword => {
-                    self.run_keywords(&mut error_count, &mut token_iter, token)
-                }
+                TokenType::Keyword => self.run_keywords(&mut error_count, &mut token_iter, token),
                 TokenType::String => {}
                 TokenType::Comment => {}
                 // Prints a new Line
@@ -36,6 +34,10 @@ impl Run for CPU<CPUType> {
                         format!("unexpected token '{}' at line {}", token.value, token.line)
                             .as_str(),
                     );
+                    self.log_e(&format!(
+                        "Unexpected token '{}' at line {}",
+                        token.value, token.line
+                    ));
                 }
             }
         }
@@ -43,21 +45,32 @@ impl Run for CPU<CPUType> {
             Cpu,
             f("Interpreting the tokens returned {} errors", error_count)
         );
+        self.log_c(&format!(
+            "Interpreting the tokens returned {} errors",
+            error_count
+        ));
         println!("-----------------------------\n");
+        self.log_clean("-----------------------------\n")
     }
 
-    fn run_keywords(&mut self, error_count: &mut usize, token_iter: &mut Peekable<Iter<Token>>, token: &Token) {
+    fn run_keywords(
+        &mut self,
+        error_count: &mut usize,
+        token_iter: &mut Peekable<Iter<Token>>,
+        token: &Token,
+    ) {
         match token.value.as_str() {
             "fn" => {
                 token_iter.next();
                 token_iter.next();
             }
             "let" => {
-                let mut nt = match token_iter.next() {
+                let nt = match token_iter.next() {
                     Some(x) => x,
                     None => {
                         *error_count += 1;
                         log!(Error, "Expected Arguments after let");
+                        self.log_e("Expected Arguments after let");
                         return;
                     }
                 };
@@ -66,36 +79,42 @@ impl Run for CPU<CPUType> {
                     _ => {
                         *error_count += 1;
                         log!(Error, "Expected variable name");
+                        self.log_e("Expected variable name");
                         return;
                     }
                 };
-                match token_iter.next().expect("Error: Expected Comma").token_type {
+                match token_iter.next().unwrap().token_type {
                     TokenType::Comma => { /* Do nothing, just for checking*/ }
                     _ => {
                         *error_count += 1;
                         log!(Error, "Expected Comma");
+                        self.log_e("Expected Comma")
                     }
                 }
-                nt = token_iter.next().expect("Error: Expected value for let");
-                match nt.token_type {
-                    TokenType::String => {
-                        self.vars.push(Var::String(StringVar {
-                            name: var_name.to_string(),
-                            value: nt.clone().value,
-                        }));
+                if let Some(nt) = token_iter.next() {
+                    match nt.token_type {
+                        TokenType::String => {
+                            self.vars.push(Var::String(StringVar {
+                                name: var_name.to_string(),
+                                value: nt.clone().value,
+                            }));
+                        }
+                        TokenType::Number(x) => {
+                            self.vars.push(Var::Number(NumberVar {
+                                name: var_name.to_string(),
+                                value: x,
+                            }));
+                        }
+                        _ => {
+                            printx(
+                                PrintT::Error,
+                                "You can only store Strings and Numbers inside a Variable",
+                            );
+                            self.log_e("You can only store Strings and Numbers inside a Variable")
+                        }
                     }
-                    TokenType::Number(x) => {
-                        self.vars.push(Var::Number(NumberVar {
-                            name: var_name.to_string(),
-                            value: x,
-                        }));
-                    }
-                    _ => {
-                        printx(
-                            PrintT::Error,
-                            "You can only store Strings and Numbers inside a Variable",
-                        );
-                    }
+                } else {
+                    self.log_e("Expected value for let")
                 }
             }
             _ => {}
@@ -114,6 +133,7 @@ impl Run for CPU<CPUType> {
                 _ => {
                     *error_count += 1;
                     log!(Error, "You can only push Numbers to the Stack!");
+                    self.log_e("You can only push Numbers to the Stack!");
                 }
             },
             "pop" => {
@@ -128,6 +148,7 @@ impl Run for CPU<CPUType> {
                     _ => {
                         *error_count += 1;
                         log!(Error, "Expected Comma");
+                        self.log_e("Expected Comma")
                     }
                 }
                 let value = token_iter.next().unwrap();
@@ -145,6 +166,7 @@ impl Run for CPU<CPUType> {
                             _ => {
                                 *error_count += 1;
                                 log!(Error,"You can only move a number or the value of a Port to the Accumulator");
+                                self.log_e("You can only move a number or the value of a Port to the Accumulator");
                                 return;
                             }
                         }
@@ -152,6 +174,7 @@ impl Run for CPU<CPUType> {
                     _ => {
                         *error_count += 1;
                         log!(Error, "Expected Port or Accu!");
+                        self.log_e("Expected Port or Accu!");
                     }
                 }
             }
@@ -186,15 +209,19 @@ impl Run for CPU<CPUType> {
             // print given string or number
             "prnt" => match token_iter.peek().unwrap().token_type {
                 TokenType::String => {
-                    print!("{}", token_iter.next().unwrap().value)
+                    let v = &token_iter.next().unwrap().value;
+                    print!("{}", v);
+                    self.log_clean(&format!("{}", v));
                 }
                 TokenType::Number(x) => {
                     token_iter.next();
-                    print!("{}", x)
+                    print!("{}", x);
+                    self.log_clean(&format!("{}", x));
                 }
                 _ => {
                     *error_count += 1;
                     log!(Error, "Print only accepts Strings and Numbers");
+                    self.log_e("Print only accepts Strings and Numbers")
                 }
             },
             "call" => {}

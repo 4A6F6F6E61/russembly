@@ -1,13 +1,19 @@
 use colored::Colorize;
+use wasm_bindgen::prelude::*;
 
 pub mod getter;
 pub mod jump_location;
 pub mod main;
 pub mod opcodes;
-pub mod show;
 pub mod run;
+pub mod show;
 
 pub type CPUType = usize;
+
+#[wasm_bindgen]
+extern "C" {
+    fn print(s: &str);
+}
 
 pub enum PrintT {
     Error,
@@ -57,8 +63,3 @@ macro_rules! log {
         printx(PrintT::Cpu, format!($($format),*).as_str());
     };
 }
-/*
-printx(
-    PrintT::Info,
-    format!("Lexer returned {} errors", lexer_error_c).as_str(),
-); */

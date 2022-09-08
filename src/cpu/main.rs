@@ -43,6 +43,7 @@ pub struct CPU<CPUType> {
     pub accumulator: CPUType,
     pub jump_locations: Vec<JumpLocation>,
     pub error_count: usize,
+    pub output: Vec<String>,
 }
 
 impl CPU<CPUType> {
@@ -54,6 +55,7 @@ impl CPU<CPUType> {
             accumulator: 0,
             jump_locations: vec![],
             error_count: 0,
+            output: vec![],
         })
     }
     pub fn push_to_stack(&mut self, value: CPUType) {
@@ -67,6 +69,7 @@ impl CPU<CPUType> {
         self.jump_locations.push(JumpLocation { name, line })
     }
 
+    #[allow(dead_code)]
     pub fn load_file(&mut self, path: &str) -> Option<Vec<Token>> {
         let mut lexer = Lexer::new();
         let mut lexer_error_c = 0usize;
@@ -84,16 +87,55 @@ impl CPU<CPUType> {
                 Lexer,
                 f("Parsing the tokens returned {} errors", lexer_error_c)
             );
+            self.log_l(&format!(
+                "Parsing the tokens returned {} errors",
+                lexer_error_c
+            ));
             if lexer_error_c != 0 {
                 exit(1)
             }
             log!(Info, "Finished parsing tokens");
+            self.log_i("Finished parsing tokens")
         } else {
             log!(Error, "Unable to read lines");
+            self.log_e("Unable to read lines")
         }
         lexer.get_tokens()
     }
 
+    #[allow(dead_code)]
+    pub fn load_string(&mut self, string: &str) -> Option<Vec<Token>> {
+        let mut lexer = Lexer::new();
+        let mut lexer_error_c = 0usize;
+        let code = &string.replace("~", "\n");
+        let line_count = code.lines().count();
+
+        if line_count != 0 {
+            code.lines().for_each(|line| {
+                let l = line.to_string();
+                lexer_error_c += lexer.run(l, line_count);
+            });
+            log!(
+                Lexer,
+                f("Parsing the tokens returned {} errors", lexer_error_c)
+            );
+            self.log_l(&format!(
+                "Parsing the tokens returned {} errors",
+                lexer_error_c
+            ));
+            if lexer_error_c != 0 {
+                exit(1)
+            }
+            log!(Info, "Finished parsing tokens");
+            self.log_i("Finished parsing tokens");
+        } else {
+            log!(Error, "Please provide some Code");
+            self.log_e("Please provide some Code")
+        }
+        lexer.get_tokens()
+    }
+
+    #[allow(dead_code)]
     fn read_lines<P>(&mut self, filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
     where
         P: AsRef<Path>,
@@ -106,6 +148,22 @@ impl CPU<CPUType> {
         let mut chars = port_str.chars();
         chars.next();
         chars.as_str().parse::<usize>()
+    }
+
+    pub fn log_e(&mut self, e: &str) {
+        self.output.push(format!("[Error]: {}\n", e));
+    }
+    pub fn log_i(&mut self, i: &str) {
+        self.output.push(format!("[Info]: {}\n", i));
+    }
+    pub fn log_l(&mut self, l: &str) {
+        self.output.push(format!("[Lexer]: {}\n", l));
+    }
+    pub fn log_c(&mut self, c: &str) {
+        self.output.push(format!("[Cpu]: {}\n", c));
+    }
+    pub fn log_clean(&mut self, s: &str) {
+        self.output.push(format!("{}\n", s));
     }
 }
 /* Traits
