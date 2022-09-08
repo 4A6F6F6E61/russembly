@@ -207,23 +207,31 @@ impl Run for CPU<CPUType> {
             "setb" => {}
             "end" => {}
             // print given string or number
-            "prnt" => match token_iter.peek().unwrap().token_type {
-                TokenType::String => {
-                    let v = &token_iter.next().unwrap().value;
-                    print!("{}", v);
-                    self.log_clean(&format!("{}", v));
-                }
-                TokenType::Number(x) => {
-                    token_iter.next();
-                    print!("{}", x);
-                    self.log_clean(&format!("{}", x));
-                }
-                _ => {
+            "prnt" => {
+                if let Some(temp) = token_iter.peek() {
+                    match temp.token_type {
+                        TokenType::String => {
+                            let v = &token_iter.next().unwrap().value;
+                            print!("{}", v);
+                            self.log_clean(&format!("{}", v));
+                        }
+                        TokenType::Number(x) => {
+                            token_iter.next();
+                            print!("{}", x);
+                            self.log_clean(&format!("{}", x));
+                        }
+                        _ => {
+                            *error_count += 1;
+                            log!(Error, "Print only accepts Strings and Numbers");
+                            self.log_e("Print only accepts Strings and Numbers")
+                        }
+                    }
+                } else {
                     *error_count += 1;
-                    log!(Error, "Print only accepts Strings and Numbers");
-                    self.log_e("Print only accepts Strings and Numbers")
+                    log!(Error, "Expected Token after print Statement");
+                    self.log_e("Expected Token after print Statement")
                 }
-            },
+            }
             "call" => {}
             &_ => {}
         }

@@ -241,7 +241,7 @@ impl Lexer {
     pub fn get_tokens(self) -> Option<Vec<Token>> {
         if self.tokens.is_empty() {
             log!(Error, "No tokens found is empty");
-            exit(1);
+            return None;
         }
         Some(self.tokens)
     }

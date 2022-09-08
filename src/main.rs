@@ -13,7 +13,7 @@ fn main() {
         }
     };
 
-    if let Some(tokens) = cpu.load_file("./src/syntax.rusm") {
+    if let Some(tokens) = cpu.load_file("./src/testing.rusm") {
         cpu.mov(0, 19);
         cpu.run_tokens(tokens);
     }

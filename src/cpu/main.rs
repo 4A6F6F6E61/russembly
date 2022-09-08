@@ -92,7 +92,7 @@ impl CPU<CPUType> {
                 lexer_error_c
             ));
             if lexer_error_c != 0 {
-                exit(1)
+                //exit(1)
             }
             log!(Info, "Finished parsing tokens");
             self.log_i("Finished parsing tokens")
@@ -124,7 +124,7 @@ impl CPU<CPUType> {
                 lexer_error_c
             ));
             if lexer_error_c != 0 {
-                exit(1)
+                //exit(1)
             }
             log!(Info, "Finished parsing tokens");
             self.log_i("Finished parsing tokens");
