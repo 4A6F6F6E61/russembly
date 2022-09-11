@@ -88,18 +88,12 @@ impl CPU<CPUType> {
                 Lexer,
                 f("Parsing the tokens returned {} errors", lexer_error_c)
             );
-            self.log_l(&format!(
-                "Parsing the tokens returned {} errors",
-                lexer_error_c
-            ));
             if lexer_error_c != 0 {
                 //exit(1)
             }
             log!(Info, "Finished parsing tokens");
-            self.log_i("Finished parsing tokens")
         } else {
             log!(Error, "Unable to read lines");
-            self.log_e("Unable to read lines")
         }
         lexer.show_lines();
         lexer.get_lines()
@@ -121,18 +115,12 @@ impl CPU<CPUType> {
                 Lexer,
                 f("Parsing the tokens returned {} errors", lexer_error_c)
             );
-            self.log_l(&format!(
-                "Parsing the tokens returned {} errors",
-                lexer_error_c
-            ));
             if lexer_error_c != 0 {
                 //exit(1)
             }
             log!(Info, "Finished parsing tokens");
-            self.log_i("Finished parsing tokens");
         } else {
             log!(Error, "Please provide some Code");
-            self.log_e("Please provide some Code")
         }
         lexer.get_lines()
     }
@@ -150,25 +138,6 @@ impl CPU<CPUType> {
         let mut chars = port_str.chars();
         chars.next();
         chars.as_str().parse::<usize>()
-    }
-
-    pub fn log_e(&mut self, e: &str) {
-        self.output.push(format!("[Error]: {}\n", e));
-    }
-    pub fn log_i(&mut self, i: &str) {
-        self.output.push(format!("[Info]: {}\n", i));
-    }
-    pub fn log_l(&mut self, l: &str) {
-        self.output.push(format!("[Lexer]: {}\n", l));
-    }
-    pub fn log_c(&mut self, c: &str) {
-        self.output.push(format!("[Cpu]: {}\n", c));
-    }
-    pub fn log_clean(&mut self, s: &str) {
-        self.output.push(format!("{}\n", s));
-    }
-    pub fn log_s(&mut self, s: &str) {
-        self.output.push(format!("[Syntax]: {}\n", s));
     }
 }
 /* Traits
