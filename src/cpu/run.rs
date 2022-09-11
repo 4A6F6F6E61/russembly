@@ -43,7 +43,7 @@ impl Run for CPU<CPUType> {
             Cpu,
             f("Interpreting the tokens returned {} errors", error_count)
         );
-        println!("-----------------------------\n");
+        printx(PrintT::Clear, "-----------------------------\n");
     }
 
     fn run_keywords(
