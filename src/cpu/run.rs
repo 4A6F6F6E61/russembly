@@ -1,43 +1,43 @@
 use crate::{
     cpu::{main::*, printx, CPUType, PrintT},
-    lexer::{Token, TokenType},
+    lexer::{Line, Token, TokenType},
     log,
 };
 use std::iter::Peekable;
 use std::slice::Iter;
 
 impl Run for CPU<CPUType> {
-    fn run_tokens(&mut self, tokens: Vec<Token>) {
+    fn run_lines(&mut self, lines: Vec<Line>) {
         let mut error_count = 0usize;
         self.output = vec![];
         println!("\nOutput:");
         println!("-----------------------------");
         self.log_clean("\nOutput:\n-----------------------------");
-        let mut token_iter = tokens.iter().peekable();
+        for i in 0..(lines.len()) {
+            let mut token_iter = lines[i].tokens.iter().peekable();
 
-        while token_iter.peek().is_some() {
-            let token = token_iter.next().unwrap();
-            match &token.token_type {
-                TokenType::OpCode => self.run_opcodes(&mut error_count, &mut token_iter, token),
-                TokenType::JumpLocation(_jump_location) => {}
-                TokenType::Bracket => {}
-                TokenType::Keyword => self.run_keywords(&mut error_count, &mut token_iter, token),
-                TokenType::String => {}
-                TokenType::Comment => {}
-                // Prints a new Line
-                TokenType::NewLine => {
-                    println!("")
-                }
-                _ => {
-                    printx(
-                        PrintT::Error,
-                        format!("unexpected token '{}' at line {}", token.value, token.line)
-                            .as_str(),
-                    );
-                    self.log_e(&format!(
-                        "Unexpected token '{}' at line {}",
-                        token.value, token.line
-                    ));
+            while token_iter.peek().is_some() {
+                let token = token_iter.next().unwrap();
+                match &token.token_type {
+                    TokenType::OpCode => self.run_opcodes(&mut error_count, &mut token_iter, token),
+                    TokenType::JumpLocation(_jump_location) => {}
+                    TokenType::Bracket => {}
+                    TokenType::Keyword => {
+                        self.run_keywords(&mut error_count, &mut token_iter, token)
+                    }
+                    TokenType::String => {}
+                    TokenType::Comment => {}
+                    // Prints a new Line
+                    TokenType::NewLine => {
+                        println!("")
+                    }
+                    _ => {
+                        printx(
+                            PrintT::Error,
+                            format!("unexpected token '{}' at line {}", token.value, i).as_str(),
+                        );
+                        self.log_e(&format!("Unexpected token '{}' at line {}", token.value, i));
+                    }
                 }
             }
         }
@@ -83,13 +83,19 @@ impl Run for CPU<CPUType> {
                         return;
                     }
                 };
-                match token_iter.next().unwrap().token_type {
-                    TokenType::Comma => { /* Do nothing, just for checking*/ }
-                    _ => {
-                        *error_count += 1;
-                        log!(Error, "Expected Comma");
-                        self.log_e("Expected Comma")
+                if let Some(nt) = token_iter.next() {
+                    match nt.token_type {
+                        TokenType::Comma => { /* Do nothing, just for checking*/ }
+                        _ => {
+                            *error_count += 1;
+                            log!(Error, "Expected Comma");
+                            self.log_e("Expected Comma")
+                        }
                     }
+                } else {
+                    *error_count += 1;
+                    log!(Error, "Expected Comma");
+                    self.log_e("Expected Comma")
                 }
                 if let Some(nt) = token_iter.next() {
                     match nt.token_type {
@@ -114,6 +120,8 @@ impl Run for CPU<CPUType> {
                         }
                     }
                 } else {
+                    *error_count += 1;
+                    log!(Error, "Expected value for let");
                     self.log_e("Expected value for let")
                 }
             }
@@ -128,54 +136,70 @@ impl Run for CPU<CPUType> {
         token: &Token,
     ) {
         match token.value.as_str() {
-            "push" => match token_iter.next().unwrap().token_type {
-                TokenType::Number(x) => self.stack.push(x),
-                _ => {
+            "push" => {
+                if let Some(nt) = token_iter.next() {
+                    match nt.token_type {
+                        TokenType::Number(x) => self.stack.push(x),
+                        _ => {
+                            *error_count += 1;
+                            log!(Error, "You can only push Numbers to the Stack!");
+                            self.log_e("You can only push Numbers to the Stack!");
+                        }
+                    }
+                } else {
                     *error_count += 1;
-                    log!(Error, "You can only push Numbers to the Stack!");
-                    self.log_e("You can only push Numbers to the Stack!");
+                    log!(Error, "Expected Number after push");
+                    self.log_e("Expected Number after push");
                 }
-            },
+            }
             "pop" => {
                 self.stack.pop();
             }
             // move value
             "mov" => {
-                let port_or_accu = token_iter.next().unwrap();
-                match token_iter.next().unwrap().token_type {
-                    // check for comma
-                    TokenType::Comma => {}
-                    _ => {
-                        *error_count += 1;
-                        log!(Error, "Expected Comma");
-                        self.log_e("Expected Comma")
-                    }
-                }
-                let value = token_iter.next().unwrap();
-                match port_or_accu.token_type {
-                    // push to port
-                    TokenType::Port => {}
-                    // push to accumulator
-                    TokenType::Accumulator => {
-                        self.accumulator = match value.token_type {
-                            TokenType::Number(x) => x,
-                            TokenType::Port => {
-                                let port = self.get_port_from_str(value.value.clone()).unwrap(); // get the Port number
-                                self.port[port]
-                            }
-                            _ => {
-                                *error_count += 1;
-                                log!(Error,"You can only move a number or the value of a Port to the Accumulator");
-                                self.log_e("You can only move a number or the value of a Port to the Accumulator");
-                                return;
-                            }
+                if let (Some(port_or_accu), Some(comma), Some(value)) =
+                    (token_iter.next(), token_iter.next(), token_iter.next())
+                {
+                    match comma.token_type {
+                        // check for comma
+                        TokenType::Comma => {}
+                        _ => {
+                            *error_count += 1;
+                            log!(Error, "Expected Comma");
+                            self.log_e("Expected Comma")
                         }
                     }
-                    _ => {
-                        *error_count += 1;
-                        log!(Error, "Expected Port or Accu!");
-                        self.log_e("Expected Port or Accu!");
+                    match port_or_accu.token_type {
+                        // push to port
+                        TokenType::Port => {}
+                        // push to accumulator
+                        TokenType::Accumulator => {
+                            self.accumulator = match value.token_type {
+                                TokenType::Number(x) => x,
+                                TokenType::Port => {
+                                    let port = self.get_port_from_str(value.value.clone()).unwrap(); // get the Port number
+                                    self.port[port]
+                                }
+                                _ => {
+                                    *error_count += 1;
+                                    log!(Error,"You can only move a number or the value of a Port to the Accumulator");
+                                    self.log_e("You can only move a number or the value of a Port to the Accumulator");
+                                    return;
+                                }
+                            }
+                        }
+                        _ => {
+                            *error_count += 1;
+                            log!(Error, "Expected Port or Accu!");
+                            self.log_e("Expected Port or Accu!");
+                        }
                     }
+                } else {
+                    *error_count += 1;
+                    log!(Error, "Expected more Tokens after mov");
+                    self.log_e("Expected more Tokens after mov");
+                    log!(Syntax, "mov <Port or Accu> <,> <value>");
+                    self.log_s("mov <Port or Accu> <,> <value>");
                 }
             }
             // add top 2 number from stack together and push them on the stack

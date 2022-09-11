@@ -20,8 +20,8 @@ pub fn run_rusm(code: &str) -> String {
         }
     };
 
-    if let Some(tokens) = cpu.load_string(code) {
-        cpu.run_tokens(tokens);
+    if let Some(lines) = cpu.load_string(code) {
+        cpu.run_lines(lines);
     }
     return cpu.output.concat();
 }

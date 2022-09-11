@@ -3,7 +3,7 @@ use std::slice::Iter;
 use {
     crate::{
         cpu::{jump_location::JumpLocation, CPUType},
-        lexer::{Lexer, Token},
+        lexer::{Lexer, Line, Token},
         log,
     },
     conv::prelude::*,
@@ -12,7 +12,6 @@ use {
         io::{self, BufRead},
         num::ParseIntError,
         path::Path,
-        process::exit,
     },
 };
 
@@ -44,6 +43,7 @@ pub struct CPU<CPUType> {
     pub jump_locations: Vec<JumpLocation>,
     pub error_count: usize,
     pub output: Vec<String>,
+    pub ex: String,
 }
 
 impl CPU<CPUType> {
@@ -56,6 +56,7 @@ impl CPU<CPUType> {
             jump_locations: vec![],
             error_count: 0,
             output: vec![],
+            ex: String::new(),
         })
     }
     pub fn push_to_stack(&mut self, value: CPUType) {
@@ -70,7 +71,7 @@ impl CPU<CPUType> {
     }
 
     #[allow(dead_code)]
-    pub fn load_file(&mut self, path: &str) -> Option<Vec<Token>> {
+    pub fn load_file(&mut self, path: &str) -> Option<Vec<Line>> {
         let mut lexer = Lexer::new();
         let mut lexer_error_c = 0usize;
         let mut line_count = 0;
@@ -100,11 +101,12 @@ impl CPU<CPUType> {
             log!(Error, "Unable to read lines");
             self.log_e("Unable to read lines")
         }
-        lexer.get_tokens()
+        lexer.show_lines();
+        lexer.get_lines()
     }
 
     #[allow(dead_code)]
-    pub fn load_string(&mut self, string: &str) -> Option<Vec<Token>> {
+    pub fn load_string(&mut self, string: &str) -> Option<Vec<Line>> {
         let mut lexer = Lexer::new();
         let mut lexer_error_c = 0usize;
         let code = &string.replace("~", "\n");
@@ -132,7 +134,7 @@ impl CPU<CPUType> {
             log!(Error, "Please provide some Code");
             self.log_e("Please provide some Code")
         }
-        lexer.get_tokens()
+        lexer.get_lines()
     }
 
     #[allow(dead_code)]
@@ -164,6 +166,9 @@ impl CPU<CPUType> {
     }
     pub fn log_clean(&mut self, s: &str) {
         self.output.push(format!("{}\n", s));
+    }
+    pub fn log_s(&mut self, s: &str) {
+        self.output.push(format!("[Syntax]: {}\n", s));
     }
 }
 /* Traits
@@ -219,7 +224,7 @@ pub trait CpuGetter<CPUType> {
 }
 
 pub trait Run {
-    fn run_tokens(&mut self, tokens: Vec<Token>);
+    fn run_lines(&mut self, lines: Vec<Line>);
     fn run_keywords(
         &mut self,
         error_count: &mut usize,

@@ -1,10 +1,12 @@
-use {
-    crate::{
-        cpu::{jump_location::JumpLocation, printx, CPUType, PrintT},
-        log,
-    },
-    std::process::exit,
+use crate::{
+    cpu::{jump_location::JumpLocation, printx, CPUType, PrintT},
+    log,
 };
+
+#[derive(Clone, Debug)]
+pub struct Line {
+    pub tokens: Vec<Token>,
+}
 
 #[derive(Clone, Debug)]
 pub struct Token {
@@ -32,6 +34,7 @@ pub enum TokenType {
 
 #[derive(Clone, Debug)]
 pub struct Lexer {
+    lines: Vec<Line>,
     tokens: Vec<Token>,
     strings: Vec<String>,
     line_number: usize,
@@ -39,6 +42,7 @@ pub struct Lexer {
 impl Lexer {
     pub fn new() -> Lexer {
         Lexer {
+            lines: vec![],
             tokens: vec![],
             strings: vec![],
             line_number: 0,
@@ -47,6 +51,8 @@ impl Lexer {
     pub fn run(&mut self, line: String, max_lines: usize) -> usize {
         let mut errors = 0usize;
         let ln = self.line_number;
+
+        self.tokens = vec![];
 
         if max_lines == 0 {
             log!(Error, "division by zero");
@@ -209,7 +215,10 @@ impl Lexer {
                 }
             }
         }
-        log!(Info, f("Parsing tokens {:.2}%", percent));
+        log!(Info, f("Parsing lines {:.2}%", percent));
+        self.lines.push(Line {
+            tokens: self.tokens.clone(),
+        });
         errors
     }
     fn generate_strings(&mut self, line: String) {
@@ -238,12 +247,21 @@ impl Lexer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_tokens(self) -> Option<Vec<Token>> {
         if self.tokens.is_empty() {
             log!(Error, "No tokens found is empty");
             return None;
         }
         Some(self.tokens)
+    }
+
+    pub fn get_lines(self) -> Option<Vec<Line>> {
+        if self.lines.is_empty() {
+            log!(Error, "No lines found (empty)");
+            return None;
+        }
+        Some(self.lines)
     }
 
     #[allow(dead_code)]
@@ -254,5 +272,18 @@ impl Lexer {
             println!("  Value    : {:?}", token.value);
             println!("}}")
         })
+    }
+    #[allow(dead_code)]
+    pub fn show_lines(&self) {
+        self.lines.iter().for_each(|lines| {
+            println!("Line {{");
+            lines.tokens.iter().for_each(|token| {
+                println!("  Token {{");
+                println!("    TokenType: {:?}", token.token_type);
+                println!("    Value    : {:?}", token.value);
+                println!("  }}");
+            });
+            println!("}}");
+        });
     }
 }

@@ -1,3 +1,11 @@
 push 10
+mov A, 9
 push 20
-prnt Stack
+prnt 10
+nl
+
+#
+#   Einfach log!() so bearbeiten dass es eine JS function ausführt
+#   welche dann den Output collected und im Output Fenster anzeigt
+#   somit sieht man wirklich wann was compiled wurde
+#

@@ -13,9 +13,9 @@ fn main() {
         }
     };
 
-    if let Some(tokens) = cpu.load_file("./src/testing.rusm") {
+    if let Some(lines) = cpu.load_file("./src/testing.rusm") {
         cpu.mov(0, 19);
-        cpu.run_tokens(tokens);
+        cpu.run_lines(lines);
     }
 
     //cpu.setb("P1^64".to_string());
