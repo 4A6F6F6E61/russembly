@@ -40,7 +40,7 @@ pub fn printx(type_: PrintT, message: &str) {
         PrintT::Clear => "".to_string().white(),
     };
     println!("{}{}", prefix, message);
-    out(&format!("{}{}", prefix, message));
+    //out(&format!("{}{}", prefix, message));
 }
 
 #[macro_export]

@@ -4,6 +4,10 @@ function out(s) {
         "russemblyOutputTextarea"
     )
     russemblyOutputTextarea.value += `${s}\n`
+    russemblyOutputTextarea.scrollTo({
+        top: russemblyOutputTextarea.scrollHeight,
+        behavior: "smooth",
+    })
 }
 
 export { out }
