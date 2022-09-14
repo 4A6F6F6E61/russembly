@@ -1,4 +1,5 @@
 use crate::{
+    cpu::lexer_error,
     cpu::{jump_location::JumpLocation, CPUType},
     log,
 };
@@ -46,13 +47,12 @@ impl Lexer {
             strings: vec![],
         }
     }
-    pub fn run(&mut self, line: String, max_lines: usize) -> usize {
-        let mut errors = 0usize;
-
+    pub fn run(&mut self, line: String, max_lines: usize) {
         self.tokens = vec![];
 
         if max_lines == 0 {
             log!(Error, "division by zero");
+            lexer_error();
         }
         let percent: f32 = (self.line_number() as f32) / max_lines as f32 * 100.0;
         self.generate_strings(line);
@@ -78,7 +78,7 @@ impl Lexer {
                             format!("Expected Function name at line {}", self.line_number())
                                 .as_str(),
                         );
-                        errors += 1;
+                        lexer_error();
                     }
                     self.tokens.push(Token {
                         token_type: TokenType::FunctionName,
@@ -99,11 +99,14 @@ impl Lexer {
                     if string_iter.peek() == Some(&&"{".to_string()) {
                         let ln = self.line_number();
                         log!(Error, f("Expected Function name at line {}", ln));
+                        lexer_error();
                     }
-                    self.tokens.push(Token {
-                        token_type: TokenType::FunctionName,
-                        value: string_iter.next().unwrap().to_string(),
-                    });
+                    if let Some(nt) = string_iter.next() {
+                        self.tokens.push(Token {
+                            token_type: TokenType::FunctionName,
+                            value: nt.to_string(),
+                        });
+                    }
                 }
                 "let" => {
                     self.tokens.push(Token {
@@ -120,12 +123,13 @@ impl Lexer {
                 "\"" => {
                     let mut string = String::new();
                     while string_iter.peek().is_some() {
-                        let str = string_iter.next().unwrap();
-                        if str == "\"" {
-                            break;
+                        if let Some(str) = string_iter.next() {
+                            if str == "\"" {
+                                break;
+                            }
+                            string.push_str(str);
+                            string.push_str(" ");
                         }
-                        string.push_str(str);
-                        string.push_str(" ");
                     }
                     string = string.replace("\\n", "\n");
                     self.tokens.push(Token {
@@ -193,11 +197,10 @@ impl Lexer {
                                 });
                             }
                             Err(_) => {
-                                errors += 1;
-                                println!("\n--------\n{}\n---------\n", str);
-                                log!(Lexer, f("\n--------\n{}\n---------\n", str));
+                                log!(Lexer, f("\n---------\n{}\n---------", str));
                                 let ln = self.line_number();
                                 log!(Error, f("Unexpected instruction at line {}", ln));
+                                lexer_error();
                             }
                         }
                     }
@@ -208,7 +211,6 @@ impl Lexer {
         self.lines.push(Line {
             tokens: self.tokens.clone(),
         });
-        errors
     }
     fn generate_strings(&mut self, line: String) {
         self.strings.clear();

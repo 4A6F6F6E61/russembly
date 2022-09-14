@@ -1,5 +1,5 @@
 use crate::{
-    cpu::{main::*, printx, CPUType, PrintT},
+    cpu::{cpu_error, main::*, printx, CPUType, PrintT, CPU_ERROR_COUNT},
     lexer::{Line, Token, TokenType},
     log,
 };
@@ -8,22 +8,18 @@ use std::slice::Iter;
 
 impl Run for CPU<CPUType> {
     fn run_lines(&mut self, lines: Vec<Line>) {
-        let mut error_count = 0usize;
-        self.output = vec![];
-        printx(PrintT::Clear, "\nOutput:");
-        printx(PrintT::Clear, "-----------------------------");
+        printx(PrintT::Clear, "\nOutput:\n");
+        printx(PrintT::Clear, "-----------------------------\n");
         for i in 0..(lines.len()) {
             let mut token_iter = lines[i].tokens.iter().peekable();
 
             while token_iter.peek().is_some() {
                 let token = token_iter.next().unwrap();
                 match &token.token_type {
-                    TokenType::OpCode => self.run_opcodes(&mut error_count, &mut token_iter, token),
+                    TokenType::OpCode => self.run_opcodes(&mut token_iter, token),
                     TokenType::JumpLocation(_jump_location) => {}
                     TokenType::Bracket => {}
-                    TokenType::Keyword => {
-                        self.run_keywords(&mut error_count, &mut token_iter, token)
-                    }
+                    TokenType::Keyword => self.run_keywords(&mut token_iter, token),
                     TokenType::String => {}
                     TokenType::Comment => {}
                     // Prints a new Line
@@ -40,18 +36,17 @@ impl Run for CPU<CPUType> {
             }
         }
         printx(PrintT::Clear, "-----------------------------\n");
+        let mut error_count = 0usize;
+        CPU_ERROR_COUNT.with(|count| {
+            error_count = *count.borrow();
+        });
         log!(
             Cpu,
             f("Interpreting the tokens returned {} errors", error_count)
         );
     }
 
-    fn run_keywords(
-        &mut self,
-        error_count: &mut usize,
-        token_iter: &mut Peekable<Iter<Token>>,
-        token: &Token,
-    ) {
+    fn run_keywords(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token) {
         match token.value.as_str() {
             "fn" => {
                 token_iter.next();
@@ -61,7 +56,7 @@ impl Run for CPU<CPUType> {
                 let nt = match token_iter.next() {
                     Some(x) => x,
                     None => {
-                        *error_count += 1;
+                        cpu_error();
                         log!(Error, "Expected Arguments after let");
                         return;
                     }
@@ -69,8 +64,8 @@ impl Run for CPU<CPUType> {
                 let var_name = match nt.token_type {
                     TokenType::VarName => nt.value.as_str(),
                     _ => {
-                        *error_count += 1;
                         log!(Error, "Expected variable name");
+                        cpu_error();
                         return;
                     }
                 };
@@ -78,12 +73,12 @@ impl Run for CPU<CPUType> {
                     match nt.token_type {
                         TokenType::Comma => { /* Do nothing, just for checking*/ }
                         _ => {
-                            *error_count += 1;
+                            cpu_error();
                             log!(Error, "Expected Comma");
                         }
                     }
                 } else {
-                    *error_count += 1;
+                    cpu_error();
                     log!(Error, "Expected Comma");
                 }
                 if let Some(nt) = token_iter.next() {
@@ -105,10 +100,11 @@ impl Run for CPU<CPUType> {
                                 PrintT::Error,
                                 "You can only store Strings and Numbers inside a Variable",
                             );
+                            cpu_error();
                         }
                     }
                 } else {
-                    *error_count += 1;
+                    cpu_error();
                     log!(Error, "Expected value for let");
                 }
             }
@@ -116,24 +112,19 @@ impl Run for CPU<CPUType> {
         }
     }
 
-    fn run_opcodes(
-        &mut self,
-        error_count: &mut usize,
-        token_iter: &mut Peekable<Iter<Token>>,
-        token: &Token,
-    ) {
+    fn run_opcodes(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token) {
         match token.value.as_str() {
             "push" => {
                 if let Some(nt) = token_iter.next() {
                     match nt.token_type {
                         TokenType::Number(x) => self.stack.push(x),
                         _ => {
-                            *error_count += 1;
+                            cpu_error();
                             log!(Error, "You can only push Numbers to the Stack!");
                         }
                     }
                 } else {
-                    *error_count += 1;
+                    cpu_error();
                     log!(Error, "Expected Number after push");
                 }
             }
@@ -149,7 +140,7 @@ impl Run for CPU<CPUType> {
                         // check for comma
                         TokenType::Comma => {}
                         _ => {
-                            *error_count += 1;
+                            cpu_error();
                             log!(Error, "Expected Comma");
                         }
                     }
@@ -165,7 +156,7 @@ impl Run for CPU<CPUType> {
                                         self.port[port]
                                     }
                                     _ => {
-                                        *error_count += 1;
+                                        cpu_error();
                                         log!(Error,"You can only move a number or the value of a Port to this Port");
                                         return;
                                     }
@@ -181,19 +172,19 @@ impl Run for CPU<CPUType> {
                                     self.port[port]
                                 }
                                 _ => {
-                                    *error_count += 1;
+                                    cpu_error();
                                     log!(Error,"You can only move a number or the value of a Port to the Accumulator");
                                     return;
                                 }
                             }
                         }
                         _ => {
-                            *error_count += 1;
+                            cpu_error();
                             log!(Error, "Expected Port or Accu!");
                         }
                     }
                 } else {
-                    *error_count += 1;
+                    cpu_error();
                     log!(Error, "Expected more Tokens after mov");
                     log!(Syntax, "mov <Port or Accu> <,> <value>");
                 }
@@ -247,17 +238,17 @@ impl Run for CPU<CPUType> {
                             if let Ok(port) = self.get_port_from_str(nt.value.clone()) {
                                 printx(PrintT::Clear, &format!("{}", self.port[port]));
                             } else {
-                                *error_count += 1;
+                                cpu_error();
                                 log!(Error, "Invalid Port");
                             }
                         }
                         _ => {
-                            *error_count += 1;
+                            cpu_error();
                             log!(Error, "Print only accepts Strings and Numbers");
                         }
                     }
                 } else {
-                    *error_count += 1;
+                    cpu_error();
                     log!(Error, "Expected Token after print Statement");
                 }
             }

@@ -10,18 +10,26 @@ pub mod show;
 pub type CPUType = usize;
 
 thread_local! {
-    pub static GLOBAL_OUTPUT: RefCell<String> =  RefCell::new(String::from(""))
+    pub static GLOBAL_OUTPUT: RefCell<String> =  RefCell::new(String::from(""));
+    pub static CPU_ERROR_COUNT: RefCell<usize> =  RefCell::new(0usize);
+    pub static LEXER_ERROR_COUNT: RefCell<usize> =  RefCell::new(0usize);
+}
+
+pub fn cpu_error() {
+    CPU_ERROR_COUNT.with(|count| {
+        *count.borrow_mut() += 1;
+    });
+}
+pub fn lexer_error() {
+    LEXER_ERROR_COUNT.with(|count| {
+        *count.borrow_mut() += 1;
+    });
 }
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(msg: &str);
-}
-
-#[wasm_bindgen(module = "/functions.js")]
-extern "C" {
-    fn out(s: &str);
 }
 
 pub enum PrintT {

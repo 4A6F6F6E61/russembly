@@ -3,9 +3,12 @@ mov A, 9
 push 20
 prnt 10
 nl
+let a, 10
+let b, "test"
+dfdfd
 
-#
-#   Einfach log!() so bearbeiten dass es eine JS function ausführt
-#   welche dann den Output collected und im Output Fenster anzeigt
-#   somit sieht man wirklich wann was compiled wurde
-#
+;
+;   Einfach log!() so bearbeiten dass es eine JS function ausführt
+;   welche dann den Output collected und im Output Fenster anzeigt
+;   somit sieht man wirklich wann was compiled wurde
+;

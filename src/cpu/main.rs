@@ -1,5 +1,7 @@
 use std::iter::Peekable;
 use std::slice::Iter;
+
+use crate::cpu::LEXER_ERROR_COUNT;
 use {
     crate::{
         cpu::{jump_location::JumpLocation, CPUType},
@@ -42,8 +44,6 @@ pub struct CPU<CPUType> {
     pub accumulator: CPUType,
     pub jump_locations: Vec<JumpLocation>,
     pub error_count: usize,
-    pub output: Vec<String>,
-    pub ex: String,
 }
 
 impl CPU<CPUType> {
@@ -55,8 +55,6 @@ impl CPU<CPUType> {
             accumulator: 0,
             jump_locations: vec![],
             error_count: 0,
-            output: vec![],
-            ex: String::new(),
         })
     }
     pub fn push_to_stack(&mut self, value: CPUType) {
@@ -73,7 +71,6 @@ impl CPU<CPUType> {
     #[allow(dead_code)]
     pub fn load_file(&mut self, path: &str) -> Option<Vec<Line>> {
         let mut lexer = Lexer::new();
-        let mut lexer_error_c = 0usize;
         let mut line_count = 0;
 
         if let Ok(file) = self.read_lines(path) {
@@ -82,7 +79,11 @@ impl CPU<CPUType> {
         if let Ok(lines) = self.read_lines(path) {
             lines.for_each(|line| {
                 let l = line.unwrap();
-                lexer_error_c += lexer.run(l, line_count);
+                lexer.run(l, line_count);
+            });
+            let mut lexer_error_c = 0usize;
+            LEXER_ERROR_COUNT.with(|count| {
+                lexer_error_c = *count.borrow();
             });
             log!(
                 Lexer,
@@ -95,21 +96,24 @@ impl CPU<CPUType> {
         } else {
             log!(Error, "Unable to read lines");
         }
-        lexer.show_lines();
+        //lexer.show_lines();
         lexer.get_lines()
     }
 
     #[allow(dead_code)]
     pub fn load_string(&mut self, string: &str) -> Option<Vec<Line>> {
         let mut lexer = Lexer::new();
-        let mut lexer_error_c = 0usize;
         let code = &string.replace("~", "\n");
         let line_count = code.lines().count();
 
         if line_count != 0 {
             code.lines().for_each(|line| {
                 let l = line.to_string();
-                lexer_error_c += lexer.run(l, line_count);
+                lexer.run(l, line_count);
+            });
+            let mut lexer_error_c = 0usize;
+            LEXER_ERROR_COUNT.with(|count| {
+                lexer_error_c = *count.borrow();
             });
             log!(
                 Lexer,
@@ -138,6 +142,45 @@ impl CPU<CPUType> {
         let mut chars = port_str.chars();
         chars.next();
         chars.as_str().parse::<usize>()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_json(&self) -> String {
+        let mut output = String::new();
+        output.push_str("{\n");
+        //stack: vec![],
+        output = format!("{} stack: {:?},\n", output, self.stack);
+        //port: [0; 8],
+        output = format!("{} ports: {{\n", output);
+        self.port.iter().enumerate().for_each(|(i, port)| {
+            output = format!("{}   {}: {},\n", output, i, port);
+        });
+        output = format!("{} }},\n", output);
+        //vars: vec![],
+        output = format!("{} vars: [ \n", output,);
+        self.vars.iter().for_each(|v| {
+            match v {
+                Var::String(x) => {
+                    output = format!(
+                        "{}    {{name: {}, value: \"{}\"}},\n",
+                        output, x.name, x.value
+                    );
+                }
+                Var::Number(x) => {
+                    output = format!("{}    {{name: {}, value: {}}},\n", output, x.name, x.value);
+                }
+            }
+            //output = format!("{}   {}: {},\n", output);
+        });
+        output.push_str(" ],\n");
+        //accumulator: 0,
+        output = format!("{} accumulator: {},\n", output, self.accumulator);
+        //jump_locations: vec![],
+        //error_count: 0,
+        output = format!("{} error_count: {},\n", output, self.accumulator);
+        //ex: String::new(),
+        output.push_str("}");
+        return output;
     }
 }
 /* Traits
@@ -194,16 +237,6 @@ pub trait CpuGetter<CPUType> {
 
 pub trait Run {
     fn run_lines(&mut self, lines: Vec<Line>);
-    fn run_keywords(
-        &mut self,
-        error_count: &mut usize,
-        token_iter: &mut Peekable<Iter<Token>>,
-        token: &Token,
-    );
-    fn run_opcodes(
-        &mut self,
-        error_count: &mut usize,
-        token_iter: &mut Peekable<Iter<Token>>,
-        token: &Token,
-    );
+    fn run_keywords(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token);
+    fn run_opcodes(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token);
 }

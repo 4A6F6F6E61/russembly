@@ -16,6 +16,7 @@ fn main() {
     if let Some(lines) = cpu.load_file("./src/testing.rusm") {
         cpu.mov(0, 19);
         cpu.run_lines(lines);
+        println!("{}", cpu.get_json());
     }
 
     //cpu.setb("P1^64".to_string());
