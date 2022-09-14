@@ -147,38 +147,56 @@ impl CPU<CPUType> {
     #[allow(dead_code)]
     pub fn get_json(&self) -> String {
         let mut output = String::new();
-        output.push_str("{\n");
+        output.push_str("{");
         //stack: vec![],
-        output = format!("{} stack: {:?},\n", output, self.stack);
+        output = format!("{}\"stack\":{:?},", output, self.stack);
         //port: [0; 8],
-        output = format!("{} ports: {{\n", output);
+        output = format!("{}\"ports\":{{", output);
         self.port.iter().enumerate().for_each(|(i, port)| {
-            output = format!("{}   {}: {},\n", output, i, port);
+            if i == 0 {
+                output = format!("{}\"{}\":\"{}\"", output, i, port);
+            } else {
+                output = format!("{},\"{}\":\"{}\"", output, i, port);
+            }
         });
-        output = format!("{} }},\n", output);
+        output = format!("{}}},", output);
         //vars: vec![],
-        output = format!("{} vars: [ \n", output,);
-        self.vars.iter().for_each(|v| {
+        output = format!("{}\"vars\":[", output,);
+        self.vars.iter().enumerate().for_each(|(i, v)| {
             match v {
                 Var::String(x) => {
-                    output = format!(
-                        "{}    {{name: {}, value: \"{}\"}},\n",
-                        output, x.name, x.value
-                    );
+                    if i == 0 {
+                        output = format!(
+                            "{}{{\"name\":{},\"value\":\"{}\"}}",
+                            output, x.name, x.value
+                        );
+                    } else {
+                        output = format!(
+                            "{},{{\"name\":{},\"value\":\"{}\"}}",
+                            output, x.name, x.value
+                        );
+                    }
                 }
                 Var::Number(x) => {
-                    output = format!("{}    {{name: {}, value: {}}},\n", output, x.name, x.value);
+                    if i == 0 {
+                        output = format!(
+                            "{}{{\"name\":{},\"value\":\"{}\"}}",
+                            output, x.name, x.value
+                        );
+                    } else {
+                        output = format!(
+                            ",{}{{\"name\":{},\"value\":\"{}\"}}",
+                            output, x.name, x.value
+                        );
+                    }
                 }
             }
             //output = format!("{}   {}: {},\n", output);
         });
-        output.push_str(" ],\n");
+        output.push_str("],");
         //accumulator: 0,
-        output = format!("{} accumulator: {},\n", output, self.accumulator);
+        output = format!("{}\"accumulator\":\"{}\"", output, self.accumulator);
         //jump_locations: vec![],
-        //error_count: 0,
-        output = format!("{} error_count: {},\n", output, self.accumulator);
-        //ex: String::new(),
         output.push_str("}");
         return output;
     }
