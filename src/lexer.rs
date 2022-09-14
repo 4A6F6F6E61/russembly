@@ -1,5 +1,5 @@
 use crate::{
-    cpu::{jump_location::JumpLocation, printx, CPUType, PrintT},
+    cpu::{jump_location::JumpLocation, CPUType},
     log,
 };
 

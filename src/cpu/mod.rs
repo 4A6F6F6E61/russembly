@@ -1,5 +1,4 @@
-use colored::Colorize;
-use wasm_bindgen::prelude::*;
+use {colored::Colorize, std::cell::RefCell, wasm_bindgen::prelude::*};
 
 pub mod getter;
 pub mod jump_location;
@@ -9,6 +8,10 @@ pub mod run;
 pub mod show;
 
 pub type CPUType = usize;
+
+thread_local! {
+    pub static GLOBAL_OUTPUT: RefCell<String> =  RefCell::new(String::from(""))
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -40,7 +43,28 @@ pub fn printx(type_: PrintT, message: &str) {
         PrintT::Clear => "".to_string().white(),
     };
     println!("{}{}", prefix, message);
+    match type_ {
+        PrintT::Clear => {
+            GLOBAL_OUTPUT.with(|output| {
+                *output.borrow_mut() = format!("{}{}{}", *output.borrow(), prefix, message);
+            });
+        }
+        _ => {
+            GLOBAL_OUTPUT.with(|output| {
+                *output.borrow_mut() = format!("{}{}{}\n", *output.borrow(), prefix, message);
+            });
+        }
+    };
     //out(&format!("{}{}", prefix, message));
+}
+
+#[allow(dead_code)]
+pub fn get_global_output() -> String {
+    let mut output = String::new();
+    GLOBAL_OUTPUT.with(|text| {
+        output = text.borrow().clone();
+    });
+    output
 }
 
 #[macro_export]
@@ -50,12 +74,15 @@ macro_rules! log {
         printx(PrintT::Error, $($str),*);
     };
     (Error, f($($format:tt),*)) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Error, format!($($format),*).as_str());
     };
     (Info, $($str:tt),*) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Info, $($str),*);
     };
     (Info, f($($format:tt),*)) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Info, format!($($format),*).as_str());
     };
     (Lexer, $($str:tt),*) => {
@@ -63,19 +90,21 @@ macro_rules! log {
         printx(PrintT::Lexer, $($str),*);
     };
     (Lexer, f($($format:tt),*)) => {
-        use crate::cpu::{printx, PrintT};
         printx(PrintT::Lexer, format!($($format),*).as_str());
     };
     (Cpu, $($str:tt),*) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Cpu, $($str),*);
     };
     (Cpu, f($($format:tt),*)) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Cpu, format!($($format),*).as_str());
     };
     (Syntax, $($str:tt),*) => {
         printx(PrintT::Syntax, $($str),*);
     };
     (Syntax, f($($format:tt),*)) => {
+        use crate::cpu::{printx, PrintT};
         printx(PrintT::Syntax, format!($($format),*).as_str());
     };
 }
