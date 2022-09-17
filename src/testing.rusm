@@ -7,11 +7,6 @@ let a, 10
 let b, "test"
 prnt a
 prnt b
-prnt c
+prnt 
 dfdfd
-
-;
-;   Einfach log!() so bearbeiten dass es eine JS function ausführt
-;   welche dann den Output collected und im Output Fenster anzeigt
-;   somit sieht man wirklich wann was compiled wurde
-;
+prnt dfgik

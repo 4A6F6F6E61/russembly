@@ -12,14 +12,17 @@ impl Run for CPU<CPUType> {
         printx(PrintT::Clear, "-----------------------------\n");
         for i in 0..(lines.len()) {
             let mut token_iter = lines[i].tokens.iter().peekable();
-
             while token_iter.peek().is_some() {
                 let token = token_iter.next().unwrap();
                 match &token.token_type {
-                    TokenType::OpCode => self.run_opcodes(&mut token_iter, token),
+                    TokenType::OpCode => {
+                        self.run_opcodes(&mut token_iter, token, lines[i].clone().as_string, i)
+                    }
                     TokenType::JumpLocation(_jump_location) => {}
                     TokenType::Bracket => {}
-                    TokenType::Keyword => self.run_keywords(&mut token_iter, token),
+                    TokenType::Keyword => {
+                        self.run_keywords(&mut token_iter, token, lines[i].clone().as_string, i)
+                    }
                     TokenType::String => {}
                     TokenType::Comment => {}
                     // Prints a new Line
@@ -46,7 +49,13 @@ impl Run for CPU<CPUType> {
         );
     }
 
-    fn run_keywords(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token) {
+    fn run_keywords(
+        &mut self,
+        token_iter: &mut Peekable<Iter<Token>>,
+        token: &Token,
+        _line: String,
+        _line_number: usize,
+    ) {
         match token.value.as_str() {
             "fn" => {
                 token_iter.next();
@@ -112,7 +121,13 @@ impl Run for CPU<CPUType> {
         }
     }
 
-    fn run_opcodes(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token) {
+    fn run_opcodes(
+        &mut self,
+        token_iter: &mut Peekable<Iter<Token>>,
+        token: &Token,
+        line: String,
+        line_number: usize,
+    ) {
         match token.value.as_str() {
             "push" => {
                 if let Some(nt) = token_iter.next() {
@@ -255,13 +270,26 @@ impl Run for CPU<CPUType> {
                             } else {
                                 cpu_error();
                                 let value = nt.value.clone();
-                                log!(Error, f("Unable to find variable \"{}\"", value));
+                                //log!(Error, f("Unable to find variable \"{}\"", value));
+                                self.cpu_line_error(
+                                    &format!("cannot find value `{}` in this scope", value),
+                                    line,
+                                    line_number,
+                                    1,
+                                    "not found in this scope",
+                                );
                             }
                         }
                     }
                 } else {
                     cpu_error();
-                    log!(Error, "Expected Token after print Statement");
+                    self.cpu_line_error(
+                        "expected token after prnt statement",
+                        line,
+                        line_number,
+                        1,
+                        "",
+                    );
                 }
             }
             "call" => {}

@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use crate::cpu::LEXER_ERROR_COUNT;
 use {
     crate::{
@@ -232,6 +234,48 @@ impl CPU<CPUType> {
             None
         }
     }
+
+    pub fn cpu_line_error(
+        &self,
+        error: &str,
+        line_string: String,
+        line_number: usize,
+        error_loc: usize,
+        error_line: &str,
+    ) {
+        let line_len = format!("{}", line_number).len();
+        let mut space = "".to_string();
+        for _ in 0..=line_len {
+            space.push(' ');
+        }
+        log!(Error, f("{}", error));
+        let blue_line = "|".blue();
+        let blue_line_number = format!("{}", line_number).blue();
+        log!(Clear, f("{}{}", space, blue_line));
+        log!(
+            Clear,
+            f("{} {} {}", blue_line_number, blue_line, line_string)
+        );
+        let mut temp = "".to_string();
+        let mut arrows = "".to_string();
+        temp.push_str(&format!("{}  ", blue_line));
+        let strings: Vec<&str> = line_string.split(" ").collect();
+        for i in 0..strings.len() {
+            if i == error_loc {
+                for _ in strings[i].chars() {
+                    arrows.push('^');
+                }
+            } else {
+                for _ in strings[i].chars() {
+                    temp.push(' ');
+                }
+            }
+        }
+        let el_red = error_line.red();
+        let arrows_red = arrows.red();
+        log!(Clear, f("{}{}{} {}", space, temp, arrows_red, el_red));
+        log!(Clear, f("{}{}\n", space, blue_line));
+    }
 }
 /* Traits
    - OpCodes
@@ -287,6 +331,18 @@ pub trait CpuGetter<CPUType> {
 
 pub trait Run {
     fn run_lines(&mut self, lines: Vec<Line>);
-    fn run_keywords(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token);
-    fn run_opcodes(&mut self, token_iter: &mut Peekable<Iter<Token>>, token: &Token);
+    fn run_keywords(
+        &mut self,
+        token_iter: &mut Peekable<Iter<Token>>,
+        token: &Token,
+        line: String,
+        line_number: usize,
+    );
+    fn run_opcodes(
+        &mut self,
+        token_iter: &mut Peekable<Iter<Token>>,
+        token: &Token,
+        line: String,
+        line_number: usize,
+    );
 }

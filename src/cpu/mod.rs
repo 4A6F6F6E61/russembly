@@ -115,4 +115,10 @@ macro_rules! log {
         use crate::cpu::{printx, PrintT};
         printx(PrintT::Syntax, format!($($format),*).as_str());
     };
+    (Clear, $($str:tt),*) => {
+        printx(PrintT::Syntax, $($str),*);
+    };
+    (Clear, f($($format:tt),*)) => {
+        printx(PrintT::Clear, format!($($format),*).as_str());
+    };
 }
