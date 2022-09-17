@@ -1,39 +1,36 @@
+use std::fmt::{Display, Formatter, Result};
+
 use crate::{cpu::main::*, cpu::CPUType};
 
-impl ShowCPU for CPU<CPUType> {
-    fn show_cpu(&self) {
-        self.show_stack();
-        self.show_port();
-        println!("Accumulator:    {}", self.get_accumulator());
-        self.show_jump_locations();
-        self.show_vars();
-    }
-    fn show_stack(&self) {
-        println!("Stack:          {:?}", self.stack);
-    }
-    fn show_port(&self) {
-        print!("Port:           {{ ");
+impl Display for CPU<CPUType> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        let mut output: String = String::new();
+        output.push_str(&format!("Stack:          {:?}\n", self.stack));
+        // Port
+        output.push_str(&format!("Port:           {{\n"));
         self.port.iter().enumerate().for_each(|(i, x)| {
             if i == 0 {
-                print!("P{}: 0x{:x}", i, x);
+                output.push_str(&format!("      P{}: 0x{:x}", i, x));
             } else {
-                print!(", P{}: 0x{:x}", i, x);
+                output.push_str(&format!(", P{}: 0x{:x}", i, x));
             }
         });
-        println!(" }}");
-    }
-    fn show_jump_locations(&self) {
-        println!("Jump Locations: {{");
+        // ln
+        output.push_str(&format!("\n}}\n"));
+        // JumpLocations
+        output.push_str(&format!("Jump Locations: {{\n"));
         self.jump_locations.iter().for_each(|x| {
-            println!("    {:?}", x);
+            output.push_str(&format!("    {:?}\n", x));
         });
-        println!("}}");
-    }
-    fn show_vars(&self) {
-        println!("Vars: {{");
+        output.push_str(&format!("}}\n"));
+        // Accu
+        output.push_str(&format!("Accumulator:    {}\n", self.get_accumulator()));
+        // Vars
+        output.push_str(&format!("Vars: {{\n"));
         self.vars.iter().for_each(|x| {
-            println!("    {:?}", x);
+            output.push_str(&format!("    {:?}\n", x));
         });
-        println!("}}");
+        output.push_str(&format!("}}\n"));
+        write!(f, "{}", output)
     }
 }

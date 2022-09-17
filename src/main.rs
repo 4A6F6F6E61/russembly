@@ -33,5 +33,5 @@ fn main() {
     //cpu.djnz(0, "test".to_string());
     //cpu.add_jump_location("idk".to_string(), 10);
     //cpu.add_jump_location("test".to_string(), 50);
-    cpu.show_cpu();
+    println!("{}", cpu)
 }

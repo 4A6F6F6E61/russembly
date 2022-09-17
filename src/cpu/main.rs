@@ -1,6 +1,3 @@
-use std::iter::Peekable;
-use std::slice::Iter;
-
 use crate::cpu::LEXER_ERROR_COUNT;
 use {
     crate::{
@@ -12,8 +9,10 @@ use {
     std::{
         fs::File,
         io::{self, BufRead},
+        iter::Peekable,
         num::ParseIntError,
         path::Path,
+        slice::Iter,
     },
 };
 
@@ -199,6 +198,39 @@ impl CPU<CPUType> {
         //jump_locations: vec![],
         output.push_str("}");
         return output;
+    }
+
+    pub fn try_get_var(&self, var: &str) -> Option<Var> {
+        let mut out = Var::Number(NumberVar {
+            name: "tmp".to_string(),
+            value: 10,
+        });
+        let mut found: bool = false;
+        self.vars.iter().for_each(|v| match v {
+            Var::String(x) => {
+                if x.name == var {
+                    found = true;
+                    out = Var::String(StringVar {
+                        name: x.name.clone(),
+                        value: x.value.clone(),
+                    });
+                }
+            }
+            Var::Number(x) => {
+                if x.name == var {
+                    found = true;
+                    out = Var::Number(NumberVar {
+                        name: x.name.clone(),
+                        value: x.value.clone(),
+                    });
+                }
+            }
+        });
+        if found {
+            Some(out)
+        } else {
+            None
+        }
     }
 }
 /* Traits

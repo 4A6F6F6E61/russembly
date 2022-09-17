@@ -72,7 +72,7 @@ fn add() -> () {
     assert_eq!(cpu.pop_from_stack(), Some(18));
 
     cpu3.push_to_stack(10);
-    cpu3.show_cpu();
+    println!("{}", cpu3)
 }
 
 #[test]

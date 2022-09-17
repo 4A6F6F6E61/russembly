@@ -5,6 +5,9 @@ prnt 10
 nl
 let a, 10
 let b, "test"
+prnt a
+prnt b
+prnt c
 dfdfd
 
 ;

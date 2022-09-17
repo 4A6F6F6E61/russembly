@@ -7,6 +7,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Line {
     pub tokens: Vec<Token>,
+    pub as_string: String,
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +32,7 @@ pub enum TokenType {
     Comment,
     Comma,
     NewLine,
+    Generic,
 }
 
 #[derive(Clone, Debug)]
@@ -55,7 +57,7 @@ impl Lexer {
             lexer_error();
         }
         let percent: f32 = (self.line_number() as f32) / max_lines as f32 * 100.0;
-        self.generate_strings(line);
+        self.generate_strings(line.clone());
         let mut string_iter = self.strings.iter().peekable();
         while string_iter.peek().is_some() {
             let str = string_iter.next().unwrap();
@@ -197,10 +199,17 @@ impl Lexer {
                                 });
                             }
                             Err(_) => {
-                                log!(Lexer, f("\n---------\n{}\n---------", str));
-                                let ln = self.line_number();
-                                log!(Error, f("Unexpected instruction at line {}", ln));
-                                lexer_error();
+                                if !self.tokens.is_empty() {
+                                    self.tokens.push(Token {
+                                        token_type: TokenType::Generic,
+                                        value: str.to_string(),
+                                    });
+                                } else {
+                                    log!(Lexer, f("\n---------\n{}\n---------", str));
+                                    let ln = self.line_number();
+                                    log!(Error, f("Unexpected instruction at line {}", ln));
+                                    lexer_error();
+                                }
                             }
                         }
                     }
@@ -210,6 +219,7 @@ impl Lexer {
         log!(Info, f("Parsing lines {:.2}%", percent));
         self.lines.push(Line {
             tokens: self.tokens.clone(),
+            as_string: line,
         });
     }
     fn generate_strings(&mut self, line: String) {

@@ -243,8 +243,20 @@ impl Run for CPU<CPUType> {
                             }
                         }
                         _ => {
-                            cpu_error();
-                            log!(Error, "Print only accepts Strings and Numbers");
+                            if let Some(var) = self.try_get_var(&nt.value) {
+                                match var {
+                                    Var::Number(x) => {
+                                        printx(PrintT::Clear, &format!("{}", x.value));
+                                    }
+                                    Var::String(x) => {
+                                        printx(PrintT::Clear, &format!("{}", x.value));
+                                    }
+                                }
+                            } else {
+                                cpu_error();
+                                let value = nt.value.clone();
+                                log!(Error, f("Unable to find variable \"{}\"", value));
+                            }
                         }
                     }
                 } else {
