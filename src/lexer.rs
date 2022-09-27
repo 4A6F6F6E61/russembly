@@ -327,6 +327,7 @@ impl Lexer {
                             }
                             _ => { /* already checked */ }
                         },
+                        TokenType::Bracket => {}
                         _ => {
                             log!(Error, "Top level code is not allowed");
                             println!("{:#?}", token)
