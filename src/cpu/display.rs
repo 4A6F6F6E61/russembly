@@ -1,6 +1,7 @@
-use std::fmt::{Display, Formatter, Result};
-
-use crate::{cpu::main::*, cpu::CPUType};
+use {
+    crate::cpu::{main::CPU, CPUType},
+    std::fmt::{Display, Formatter, Result},
+};
 
 impl Display for CPU<CPUType> {
     fn fmt(&self, f: &mut Formatter) -> Result {
@@ -24,7 +25,7 @@ impl Display for CPU<CPUType> {
         });
         output.push_str(&format!("}}\n"));
         // Accu
-        output.push_str(&format!("Accumulator:    {}\n", self.get_accumulator()));
+        output.push_str(&format!("Accumulator:    {:?}\n", self.get_accumulator()));
         // Vars
         output.push_str(&format!("Vars: {{\n"));
         self.vars.iter().for_each(|x| {

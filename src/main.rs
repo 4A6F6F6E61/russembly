@@ -2,20 +2,22 @@ mod cpu;
 mod lexer;
 mod test;
 
-use crate::cpu::main::*;
+use crate::cpu::{main::*, set_wasm};
 
 fn main() {
+    set_wasm(false);
     let mut cpu = match CPU::new() {
         Ok(cpu) => cpu,
         Err(err) => {
-            println!("{}", err);
+            println!("{err}");
             return;
         }
     };
 
-    if let Some(lines) = cpu.load_file("./src/testing.rusm") {
+    if let Some(()) = cpu.load_file("./src/testing.rusm") {
         cpu.mov(0, 19);
-        cpu.run_lines(lines);
+        //cpu.run_lines(lines);
+        cpu.run_main();
         println!("{}", cpu.get_json());
     }
 

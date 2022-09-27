@@ -1,7 +1,12 @@
-use crate::{
-    cpu::lexer_error,
-    cpu::{jump_location::JumpLocation, CPUType},
-    log,
+#![allow(dead_code)]
+use std::fmt::Write;
+
+use {
+    crate::{
+        cpu::{lexer_error, printx, wasm, CPUType, JumpLocation, PrintT},
+        log,
+    },
+    indicatif::{ProgressBar, ProgressState, ProgressStyle},
 };
 
 #[derive(Clone, Debug)]
@@ -11,11 +16,18 @@ pub struct Line {
 }
 
 #[derive(Clone, Debug)]
+pub struct Function {
+    pub name: String,
+    pub arguments: Vec<Token>,
+    pub lines: Vec<Line>,
+}
+
+#[derive(Clone, Debug)]
 pub struct Token {
     pub token_type: TokenType,
     pub value: String,
 }
-#[allow(dead_code)]
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
     OpCode,
@@ -38,20 +50,42 @@ pub enum TokenType {
 #[derive(Clone, Debug)]
 pub struct Lexer {
     lines: Vec<Line>,
+    functions: Vec<Function>,
     tokens: Vec<Token>,
     strings: Vec<String>,
+    progress_bar: ProgressBar,
 }
 impl Lexer {
     pub fn new() -> Lexer {
         Lexer {
             lines: vec![],
+            functions: vec![],
             tokens: vec![],
             strings: vec![],
+            progress_bar: ProgressBar::new(10000), // For two decimal
         }
     }
+
+    pub fn setup_pb(&mut self) {
+        self.progress_bar.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {percent}% ({eta})",
+            )
+            .unwrap()
+            .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
+                write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            })
+            .progress_chars("#-"),
+        );
+    }
+
+    pub fn finish_pb(&mut self) {
+        self.progress_bar
+            .finish_with_message("Finished parsing tokens");
+    }
+
     pub fn run(&mut self, line: String, max_lines: usize) {
         self.tokens = vec![];
-
         if max_lines == 0 {
             log!(Error, "division by zero");
             lexer_error();
@@ -174,11 +208,11 @@ impl Lexer {
                         while string_iter.peek().is_some() {
                             comment.push_str(string_iter.next().unwrap());
                             comment.push_str(" ");
-                        }
-                        self.tokens.push(Token {
-                            token_type: TokenType::Comment,
-                            value: comment,
-                        });
+                        } /* Why would u need the somments in the Tokentree???
+                          self.tokens.push(Token {
+                              token_type: TokenType::Comment,
+                              value: comment,
+                          }); */
                         continue;
                     } else if str.ends_with(":") {
                         let mut tmp = str.chars();
@@ -216,12 +250,103 @@ impl Lexer {
                 }
             }
         }
-        log!(Info, f("Parsing lines {:.2}%", percent));
+        if wasm() {
+            log!(Info, f("Parsing lines {:.2}%", percent));
+        } else {
+            self.progress_bar.set_position((percent as u64) * 100);
+        }
         self.lines.push(Line {
             tokens: self.tokens.clone(),
             as_string: line,
         });
     }
+
+    pub fn generate_functions(&mut self) /*-> Option<Vec<Function>>*/
+    {
+        let mut function_name = "";
+        let mut function_arguments: Vec<Token> = vec![];
+        let mut function_body: Vec<Line> = vec![];
+
+        for line in &self.lines {
+            if check_line_for_fn(line.clone()) {
+                if function_name != "" {
+                    self.functions.push(Function {
+                        name: function_name.to_string(),
+                        arguments: function_arguments.clone(),
+                        lines: function_body.clone(),
+                    });
+                    function_name = "";
+                    function_arguments = vec![];
+                    function_body = vec![];
+                }
+                let mut tokens = line.tokens.iter().peekable();
+                while tokens.peek().is_some() {
+                    let token = tokens.next().unwrap();
+                    match &token.token_type {
+                        TokenType::Comment => {
+                            continue;
+                        }
+                        TokenType::Keyword => match token.value.as_str() {
+                            "fn" => {
+                                let syntax_fn = || {
+                                    log!(Syntax, "\nfn `name` (`arguments`) {\n`code`\n}");
+                                };
+                                if let (Some(fn_name), Some(open_function_bracket)) =
+                                    (tokens.next(), tokens.next())
+                                {
+                                    if open_function_bracket.value != "(" {
+                                        let bracket = &open_function_bracket.value;
+                                        log!(Error, f("Expected `(` but found {bracket}"));
+                                        syntax_fn();
+                                        break;
+                                    }
+                                    function_name = &fn_name.value;
+                                    // generate function arguments
+                                    while tokens.peek().is_some() {
+                                        let temp = tokens.next().unwrap();
+                                        match temp.token_type {
+                                            TokenType::Bracket => {
+                                                if temp.value != ")" {
+                                                    log!(Error, "Expected closing breackets");
+                                                    syntax_fn();
+                                                    break;
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                            _ => {
+                                                function_arguments.push(temp.clone());
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    log!(Error, "Expected function name and opening brackets");
+                                    syntax_fn();
+                                    break;
+                                }
+                            }
+                            _ => { /* already checked */ }
+                        },
+                        _ => {
+                            log!(Error, "Top level code is not allowed");
+                            println!("{:#?}", token)
+                        }
+                    }
+                }
+            } else {
+                function_body.push(line.clone());
+            }
+        }
+        if function_name != "" {
+            self.functions.push(Function {
+                name: function_name.to_string(),
+                arguments: function_arguments.clone(),
+                lines: function_body.clone(),
+            })
+        }
+        //Some(self.functions.clone())
+    }
+
     fn generate_strings(&mut self, line: String) {
         self.strings.clear();
         let mut temp_string = String::new();
@@ -248,13 +373,20 @@ impl Lexer {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn get_tokens(self) -> Option<Vec<Token>> {
-        if self.tokens.is_empty() {
-            log!(Error, "No tokens found is empty");
+    pub fn get_functions(&self) -> Option<Vec<Function>> {
+        if self.functions.is_empty() {
+            log!(Error, "No functions found (empty)");
             return None;
         }
-        Some(self.tokens)
+        Some(self.functions.clone())
+    }
+
+    pub fn get_tokens(self) -> Option<Vec<Token>> {
+        if self.tokens.is_empty() {
+            log!(Error, "No tokens found (empty)");
+            return None;
+        }
+        Some(self.tokens.clone())
     }
 
     pub fn get_lines(self) -> Option<Vec<Line>> {
@@ -262,10 +394,9 @@ impl Lexer {
             log!(Error, "No lines found (empty)");
             return None;
         }
-        Some(self.lines)
+        Some(self.lines.clone())
     }
 
-    #[allow(dead_code)]
     pub fn show_tokens(self) {
         self.tokens.iter().for_each(|token| {
             println!("Token {{");
@@ -274,7 +405,7 @@ impl Lexer {
             println!("}}")
         })
     }
-    #[allow(dead_code)]
+
     pub fn show_lines(&self) {
         self.lines.iter().for_each(|lines| {
             println!("Line {{");
@@ -287,7 +418,17 @@ impl Lexer {
             println!("}}");
         });
     }
+
     pub fn line_number(&self) -> usize {
         self.lines.len() + 1
     }
+}
+
+fn check_line_for_fn(line: Line) -> bool {
+    if line.tokens.len() != 0 {
+        if line.tokens[0].value == "fn" {
+            return true;
+        }
+    }
+    false
 }
