@@ -14,6 +14,10 @@ crate-type = ["cdylib"]
 [dependencies]
 num = "0.4.0"
 conv = "0.3.3"
-colored = "2.0.0"
-wasm-bindgen = "0.2.82"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 indicatif = "0.17.1"
+colored = "2.0.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.82"

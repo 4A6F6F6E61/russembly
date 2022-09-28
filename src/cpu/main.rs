@@ -8,7 +8,6 @@ use {
         lexer::{Function, Lexer, Line, Token, TokenType},
         log,
     },
-    colored::{ColoredString, Colorize},
     conv::prelude::*,
     std::{
         fmt::Debug,
@@ -20,6 +19,9 @@ use {
         slice::Iter,
     },
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use colored::{ColoredString, Colorize};
 
 #[derive(Debug, Clone)]
 pub struct CPU<CPUType> {
@@ -296,21 +298,17 @@ impl CPU<CPUType> {
             space.push(' ');
         }
         log!(Error, f("{}", error));
-        let blue_line: ColoredString;
-        if cfg!(target_arch = "wasm32") {
-            blue_line = "<span class=\"blue\">|</span>".blue(); // the .blue() is ignored by the html and is only here
-                                                                // to ensure that the type is ColoredString
-        } else {
-            blue_line = "|".blue();
-        }
-        let blue_line_number: ColoredString;
-        if cfg!(target_arch = "wasm32") {
-            blue_line_number = format!("<span class=\"blue\">{}</span>", line_number).blue();
-            // the .blue() is ignored by the html and is only here
-            // to ensure that the type is ColoredString
-        } else {
-            blue_line_number = format!("{}", line_number).blue();
-        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let blue_line: ColoredString = "|".blue();
+        #[cfg(target_arch = "wasm32")]
+        let blue_line: &str = "<span class=\"blue\">|</span>";
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let blue_line_number: ColoredString = format!("{}", line_number).blue();
+        #[cfg(target_arch = "wasm32")]
+        let blue_line_number: String = format!("<span class=\"blue\">{}</span>", line_number);
+
         log!(Clear, f("{}{}\n", space, blue_line));
         log!(
             Clear,
@@ -331,8 +329,15 @@ impl CPU<CPUType> {
                 }
             }
         }
+        #[cfg(not(target_arch = "wasm32"))]
         let el_red = error_line.red();
+        #[cfg(not(target_arch = "wasm32"))]
         let arrows_red = arrows.red();
+
+        #[cfg(target_arch = "wasm32")]
+        let el_red = format!("<span class=\"red\">{}</span>", error_line);
+        #[cfg(target_arch = "wasm32")]
+        let arrows_red = format!("<span class=\"red\">{}</span>", arrows);
         log!(Clear, f("{}{}{} {}\n", space, temp, arrows_red, el_red));
         log!(Clear, f("{}{}\n", space, blue_line));
     }
@@ -624,7 +629,7 @@ impl CPU<CPUType> {
                                 //log!(Error, f("Unable to find variable \"{}\"", value));
                                 self.cpu_line_error(
                                     &format!("cannot find value `{value}` in this scope"),
-                                    line,
+                                    line.trim().to_string(),
                                     line_number,
                                     1,
                                     "not found in this scope",
@@ -636,7 +641,7 @@ impl CPU<CPUType> {
                     cpu_error();
                     self.cpu_line_error(
                         "expected token after prnt statement",
-                        line,
+                        line.trim().to_string(),
                         line_number,
                         1,
                         "",

@@ -1,4 +1,5 @@
 fn main() {
+    let test, 20
     mov A, 10
     call test
     prnt "Everything works!!!"
@@ -9,6 +10,7 @@ fn test(something) {
     mov A, 20
     call test2
     prnt A
+    prnt something
     nl
 }
 

@@ -116,7 +116,6 @@ macro_rules! log {
         printx(PrintT::Lexer, $($str)*);
     };
     (Cpu, f($($format:tt)*)) => {
-        use crate::cpu::{printx, PrintT};
         printx(PrintT::Cpu, format!($($format)*).as_str());
     };
     (Cpu, $($str:tt)*) => {
