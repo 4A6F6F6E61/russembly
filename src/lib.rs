@@ -1,7 +1,8 @@
+#![cfg(target_arch = "wasm32")]
 mod cpu;
 mod lexer;
 
-use crate::{cpu::get_global_output, cpu::main::*, cpu::set_wasm};
+use crate::{cpu::get_global_output, cpu::main::*};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -17,11 +18,9 @@ impl RussemblyWasm {
         }
     }
     pub fn run_rusm(&mut self, code: &str) -> String {
-        set_wasm(true);
         let mut cpu = match CPU::new() {
             Ok(cpu) => cpu,
             Err(_) => {
-                //log(&format!("{}", err));
                 return "".to_string();
             }
         };

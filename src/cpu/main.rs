@@ -2,7 +2,7 @@
 use {
     crate::{
         cpu::{
-            cpu_error, printx, wasm, CPUType, JumpLocation, NumberVar, PrintT, StringVar, Var,
+            cpu_error, printx, CPUType, JumpLocation, NumberVar, PrintT, StringVar, Var,
             CPU_ERROR_COUNT, LEXER_ERROR_COUNT,
         },
         lexer::{Function, Lexer, Line, Token, TokenType},
@@ -80,6 +80,7 @@ impl CPU<CPUType> {
     /*
      * Load a file and get the Tokens from the Lexer
      */
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_file(&mut self, path: &str) -> Option<()> {
         self.functions = vec![];
         let mut lexer = Lexer::new();
@@ -296,14 +297,14 @@ impl CPU<CPUType> {
         }
         log!(Error, f("{}", error));
         let blue_line: ColoredString;
-        if wasm() {
+        if cfg!(target_arch = "wasm32") {
             blue_line = "<span class=\"blue\">|</span>".blue(); // the .blue() is ignored by the html and is only here
                                                                 // to ensure that the type is ColoredString
         } else {
             blue_line = "|".blue();
         }
         let blue_line_number: ColoredString;
-        if wasm() {
+        if cfg!(target_arch = "wasm32") {
             blue_line_number = format!("<span class=\"blue\">{}</span>", line_number).blue();
             // the .blue() is ignored by the html and is only here
             // to ensure that the type is ColoredString
@@ -386,7 +387,7 @@ impl CPU<CPUType> {
                     TokenType::Comment => {}
                     // Prints a new Line
                     TokenType::NewLine => {
-                        println!("")
+                        log!(Clear, "\n");
                     }
                     _ => {
                         printx(
@@ -407,10 +408,10 @@ impl CPU<CPUType> {
         _line_number: usize,
     ) {
         match token.value.as_str() {
-            "fn" => {
-                token_iter.next();
-                token_iter.next();
-            }
+            // "fn" => {
+            //     token_iter.next();
+            //     token_iter.next();
+            // }
             "let" => {
                 let nt = match token_iter.next() {
                     Some(x) => x,

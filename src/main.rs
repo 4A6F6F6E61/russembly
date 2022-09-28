@@ -2,10 +2,9 @@ mod cpu;
 mod lexer;
 mod test;
 
-use crate::cpu::{main::*, set_wasm};
+use crate::cpu::main::*;
 
 fn main() {
-    set_wasm(false);
     let mut cpu = match CPU::new() {
         Ok(cpu) => cpu,
         Err(err) => {

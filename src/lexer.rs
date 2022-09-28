@@ -1,13 +1,14 @@
 #![allow(dead_code)]
-use std::fmt::Write;
 
-use {
-    crate::{
-        cpu::{lexer_error, printx, wasm, CPUType, JumpLocation, PrintT},
-        log,
-    },
-    indicatif::{ProgressBar, ProgressState, ProgressStyle},
+use crate::{
+    cpu::{lexer_error, printx, CPUType, JumpLocation, PrintT},
+    log,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::fmt::Write;
 
 #[derive(Clone, Debug)]
 pub struct Line {
@@ -47,6 +48,7 @@ pub enum TokenType {
     Generic,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
 pub struct Lexer {
     lines: Vec<Line>,
@@ -54,8 +56,20 @@ pub struct Lexer {
     tokens: Vec<Token>,
     strings: Vec<String>,
     progress_bar: ProgressBar,
+    pub syntax: HashMap<&'static str, &'static str>,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug)]
+pub struct Lexer {
+    lines: Vec<Line>,
+    functions: Vec<Function>,
+    tokens: Vec<Token>,
+    strings: Vec<String>,
+    pub syntax: HashMap<&'static str, &'static str>,
 }
 impl Lexer {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Lexer {
         Lexer {
             lines: vec![],
@@ -63,9 +77,20 @@ impl Lexer {
             tokens: vec![],
             strings: vec![],
             progress_bar: ProgressBar::new(10000), // For two decimal
+            syntax: HashMap::from([("function", "def"), ("", "")]),
         }
     }
-
+    #[cfg(target_arch = "wasm32")]
+    pub fn new() -> Lexer {
+        Lexer {
+            lines: vec![],
+            functions: vec![],
+            tokens: vec![],
+            strings: vec![],
+            syntax: HashMap::from([("function", "def"), ("", "")]),
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn setup_pb(&mut self) {
         self.progress_bar.set_style(
             ProgressStyle::with_template(
@@ -78,7 +103,7 @@ impl Lexer {
             .progress_chars("#-"),
         );
     }
-
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn finish_pb(&mut self) {
         self.progress_bar
             .finish_with_message("Finished parsing tokens");
@@ -250,9 +275,11 @@ impl Lexer {
                 }
             }
         }
-        if wasm() {
+        if cfg!(target_arch = "wasm32") {
             log!(Info, f("Parsing lines {:.2}%", percent));
-        } else {
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
             self.progress_bar.set_position((percent as u64) * 100);
         }
         self.lines.push(Line {
