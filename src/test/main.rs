@@ -1,6 +1,13 @@
 #![allow(unused_macros)]
+use std::{
+    fs::File,
+    io::{self, BufRead},
+    path::Path,
+};
+
 #[cfg(test)]
 use crate::cpu::main::*;
+use crate::lexer_new::*;
 
 macro_rules! new {
     (let $name:ident = new $type:ty;) => {
@@ -109,4 +116,23 @@ fn max_usize() -> () {
         cpu.setb(format!("P0^{}", i));
     }
     assert_eq!(cpu.get_port(0), usize::MAX) // 18446744073709551615
+}
+
+#[test]
+fn lexer_new() -> () {
+    let mut lexer = Lexer::new();
+
+    lexer.parse(
+        "fn main(test args) {\nloop {\n a cool\n}\n}\nloop fn main(test args) {\n a cool\n}"
+            .to_string(),
+    );
+    println!("{:#?}", lexer);
+}
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }

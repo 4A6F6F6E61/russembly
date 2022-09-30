@@ -1,8 +1,8 @@
 #![cfg(target_arch = "wasm32")]
 mod cpu;
 mod lexer;
+mod lexer_new;
 
-use crate::{cpu::get_global_output, cpu::main::*};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

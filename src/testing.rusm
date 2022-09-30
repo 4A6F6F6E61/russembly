@@ -1,4 +1,4 @@
-fn main() {
+fn () {
     let test, 20
     mov A, 10
     call test

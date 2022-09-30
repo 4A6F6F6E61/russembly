@@ -1,5 +1,6 @@
 mod cpu;
 mod lexer;
+mod lexer_new;
 mod test;
 
 use crate::cpu::main::*;

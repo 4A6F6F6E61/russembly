@@ -108,7 +108,7 @@ impl CPU<CPUType> {
                 f("Parsing the tokens returned {} errors", lexer_error_c)
             );
             if lexer_error_c != 0 {
-                //exit(1)
+                //exit(1);
             }
             log!(Info, "Finished parsing tokens");
         } else {
@@ -150,9 +150,9 @@ impl CPU<CPUType> {
                 Lexer,
                 f("Parsing the tokens returned {} errors", lexer_error_c)
             );
-            if lexer_error_c != 0 {
-                //exit(1)
-            }
+            //if lexer_error_c != 0 {
+            //    log!(Lexer, "");
+            //}
             log!(Info, "Finished parsing tokens");
         } else {
             log!(Error, "Please provide some Code");
