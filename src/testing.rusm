@@ -1,21 +1,9 @@
-fn () {
-    let test, 20
-    mov A, 10
-    call test
-    prnt "Everything works!!!"
-    nl
+fn main(test args) {
+    loop {
+        a cool
+    }
 }
-; this is a test
-fn test(something) {
-    mov A, 20
-    call test2
-    prnt A
-    prnt something
-    nl
-}
-
-fn test2() {
-    mov P1, 40
-    prnt P1
-    nl
+# test test test test
+loop fn main(test args) {
+    a cool
 }

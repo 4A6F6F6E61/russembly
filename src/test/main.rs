@@ -1,13 +1,9 @@
 #![allow(unused_macros)]
-use std::{
-    fs::File,
-    io::{self, BufRead},
-    path::Path,
-};
-
 #[cfg(test)]
 use crate::cpu::main::*;
 use crate::lexer_new::*;
+use std::env;
+use std::fs;
 
 macro_rules! new {
     (let $name:ident = new $type:ty;) => {
@@ -121,18 +117,8 @@ fn max_usize() -> () {
 #[test]
 fn lexer_new() -> () {
     let mut lexer = Lexer::new();
-
-    lexer.parse(
-        "fn main(test args) {\nloop {\n a cool\n}\n}\nloop fn main(test args) {\n a cool\n}"
-            .to_string(),
-    );
+    let code =
+        fs::read_to_string("./src/testing.rusm").expect("Should have been able to read the file");
+    lexer.parse(code);
     println!("{:#?}", lexer);
-}
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }

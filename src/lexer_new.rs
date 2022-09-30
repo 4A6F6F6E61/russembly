@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use crate::{
-    cpu::{lexer_error, printx, CPUType, JumpLocation, PrintT},
-    lexer, log,
+    cpu::{lexer_error, printx, CPUType, PrintT},
+    log,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
@@ -19,7 +19,7 @@ pub enum Token {
     String(&'static str),
     OpCode(&'static str),
     Port(&'static str),
-    Comment(&'static str),
+    Comment(String),
     Stack,
     Accumulator,
     Comma,
@@ -170,7 +170,8 @@ impl Lexer {
         let mut line_number = 0;
         while line_iter.peek().is_some() {
             line_number += 1;
-            let mut string_iter = line_iter.next().unwrap().iter().peekable();
+            let next_line = line_iter.next().unwrap();
+            let mut string_iter = next_line.iter().peekable();
             while string_iter.peek().is_some() {
                 let str = string_iter.next().unwrap();
                 match str.as_str() {
@@ -215,6 +216,7 @@ impl Lexer {
                                 if let Some(op_braces) = string_iter.next() {
                                     if op_braces != "{" {
                                         log!(Error, f("Expected opening braces but found `{op_braces}` at line {line_number}"));
+                                        lexer_error();
                                     } else {
                                         self.brackets.braces += 1;
                                         let mut fn_body: Vec<Vec<String>> = vec![];
@@ -283,6 +285,7 @@ impl Lexer {
                                     }
                                 } else {
                                     log!(Error, f("Expected opening braces at line {line_number}"));
+                                    lexer_error();
                                 }
                             }
                         } else {
@@ -291,7 +294,14 @@ impl Lexer {
                             lexer_error();
                         }
                     }
-                    "#" => {}
+                    "#" => {
+                        log!(Lexer, f("{:?}", next_line));
+                        let mut comment = "".to_string();
+                        for x in next_line {
+                            comment.push_str(&format!(" {}", x.as_str()));
+                        }
+                        self.ast.push(Token::Comment(comment));
+                    }
                     "const" => {}
                     _ => {}
                 }
