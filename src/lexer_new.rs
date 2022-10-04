@@ -7,14 +7,16 @@ use crate::{
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 #[cfg(not(target_arch = "wasm32"))]
 use std::fmt::Write;
-use std::vec;
+use std::{collections::HashMap, vec};
 
 #[derive(Clone, Debug)]
 pub enum Token {
     Function(Function),
     LoopFunction(Function),
     Loop(Loop),
-    Const,
+    Const(Let),
+    Global(Let),
+    Var(Let),
     Number(CPUType),
     String(&'static str),
     OpCode(&'static str),
@@ -41,11 +43,17 @@ pub struct Function {
     pub arguments: Vec<String>,
     pub lines: Vec<Line>,
     pub tmp_lines: Vec<Vec<String>>,
+    pub start_ln: i32,
 }
 #[derive(Clone, Debug)]
 pub struct Loop {
     pub lines: Vec<Line>,
     pub tmp_lines: Vec<Vec<String>>,
+}
+#[derive(Clone, Debug)]
+pub struct Let {
+    pub name: String,
+    pub value: String,
 }
 // -----------------------------------------------------------------------
 // Lexer structs
@@ -53,18 +61,22 @@ pub struct Loop {
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
 pub struct Lexer {
-    ast: Vec<Token>,
+    pub tmp_ast: Vec<Token>,
+    pub ast: Vec<Token>,
     strings: Vec<Vec<String>>,
     progress_bar: ProgressBar,
     brackets: Brackets,
+    syntax: HashMap<&'static str, &'static str>,
 }
 
 #[cfg(target_arch = "wasm32")]
 #[derive(Clone, Debug)]
 pub struct Lexer {
-    ast: Vec<Token>,
+    pub tmp_ast: Vec<Token>,
+    pub ast: Vec<Token>,
     strings: Vec<Vec<String>>,
     brackets: Brackets,
+    syntax: HashMap<&'static str, &'static str>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,8 +90,15 @@ pub struct Brackets {
 // -----------------------------------------------------------------------
 impl Lexer {
     pub fn new() -> Lexer {
+        let syntax = HashMap::from([
+            ("function", "fn"),
+            ("loop", "loop"),
+            ("open_braces", "{"),
+            ("close_braces", "}"),
+        ]);
         #[cfg(not(target_arch = "wasm32"))]
         return Lexer {
+            tmp_ast: vec![],
             ast: vec![],
             strings: vec![],
             progress_bar: ProgressBar::new(10000),
@@ -88,9 +107,11 @@ impl Lexer {
                 square: 0,
                 braces: 0,
             },
+            syntax,
         };
         #[cfg(target_arch = "wasm32")]
         Lexer {
+            tmp_ast: vec![],
             ast: vec![],
             strings: vec![],
             brackets: Brackets {
@@ -98,6 +119,7 @@ impl Lexer {
                 square: 0,
                 braces: 0,
             },
+            syntax,
         }
     }
     // --------------------------------
@@ -162,6 +184,20 @@ impl Lexer {
     // Parsing
     // --------------------------------
     pub fn parse(&mut self, code: String) {
+        self.top_level(code);
+
+        for node in self.tmp_ast.clone() {
+            match node {
+                Token::Function(func) => {
+                    self.low_level(func.tmp_lines, func.start_ln);
+                }
+                _ => {
+                    self.ast.push(node.to_owned());
+                }
+            }
+        }
+    }
+    pub fn top_level(&mut self, code: String) {
         self.generate_strings(code); // generates a 2D string vector
                                      // ------------------------------
                                      // This is for toplevel only
@@ -239,24 +275,26 @@ impl Lexer {
                                                         self.brackets.braces -= 1;
                                                         if self.brackets.braces == 0 {
                                                             if loop_ {
-                                                                self.ast.push(Token::LoopFunction(
-                                                                    Function {
+                                                                self.tmp_ast.push(
+                                                                    Token::LoopFunction(Function {
                                                                         name: fn_name.to_owned(),
                                                                         arguments: arguments
                                                                             .clone(),
                                                                         lines: vec![],
                                                                         tmp_lines: fn_body.clone(),
-                                                                    },
-                                                                ));
+                                                                        start_ln: line_number,
+                                                                    }),
+                                                                );
                                                                 function_parsed = true;
                                                             } else {
-                                                                self.ast.push(Token::Function(
+                                                                self.tmp_ast.push(Token::Function(
                                                                     Function {
                                                                         name: fn_name.to_owned(),
                                                                         arguments: arguments
                                                                             .clone(),
                                                                         lines: vec![],
                                                                         tmp_lines: fn_body.clone(),
+                                                                        start_ln: line_number,
                                                                     },
                                                                 ));
                                                                 function_parsed = true;
@@ -296,18 +334,84 @@ impl Lexer {
                     }
                     "#" => {
                         log!(Lexer, f("{:?}", next_line));
-                        let mut comment = "".to_string();
-                        for x in next_line {
-                            comment.push_str(&format!(" {}", x.as_str()));
-                        }
-                        self.ast.push(Token::Comment(comment));
+                        let comment = next_line.join(" ");
+                        self.tmp_ast.push(Token::Comment(comment));
                     }
-                    "const" => {}
+                    "const" | "global" => {
+                        let syntax = || {
+                            if str == "const" {
+                                log!(Syntax, "const `name` = `value`");
+                            } else {
+                                log!(Syntax, "global `name` = `value`");
+                            }
+                        };
+                        if let (Some(name), Some(equals), Some(value)) =
+                            (string_iter.next(), string_iter.next(), string_iter.next())
+                        {
+                            if equals == "=" {
+                                if str == "const" {
+                                    self.tmp_ast.push(Token::Const(Let {
+                                        name: name.to_owned(),
+                                        value: value.to_owned(),
+                                    }))
+                                } else {
+                                    self.tmp_ast.push(Token::Global(Let {
+                                        name: name.to_owned(),
+                                        value: value.to_owned(),
+                                    }))
+                                }
+                            } else {
+                                log!(Error, f("Expected `=` at line {line_number}"));
+                                syntax();
+                            }
+                        } else {
+                            log!(Error, f("Wrong Syntax at line {line_number}"));
+                            syntax();
+                        }
+                    }
                     _ => {}
                 }
             }
         }
         // ------------------------------
+    }
+
+    pub fn low_level(&mut self, code: Vec<Vec<String>>, start_ln: i32) -> Vec<Token> {
+        let mut tokens = vec![];
+        let mut line_iter = code.iter().peekable();
+        let mut line_number = start_ln;
+        while line_iter.peek().is_some() {
+            line_number += 1;
+            let next_line = line_iter.next().unwrap();
+            let mut string_iter = next_line.iter().peekable();
+            while string_iter.peek().is_some() {
+                match string_iter.next().unwrap().as_str() {
+                    "let" => {
+                        let syntax = || {
+                            log!(Syntax, "let `name` = `value`");
+                        };
+                        if let (Some(name), Some(equals), Some(value)) =
+                            (string_iter.next(), string_iter.next(), string_iter.next())
+                        {
+                            if equals == "=" {
+                                self.tmp_ast.push(Token::Var(Let {
+                                    name: name.to_owned(),
+                                    value: value.to_owned(),
+                                }))
+                            } else {
+                                log!(Error, f("Expected `=` at line {line_number}"));
+                                syntax();
+                            }
+                        } else {
+                            log!(Error, f("Wrong Syntax at line {line_number}"));
+                            syntax();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        tokens
     }
 
     pub fn parse_line() {}

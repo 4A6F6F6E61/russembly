@@ -1,3 +1,6 @@
+global gtest = 10
+const ctest = 20
+
 fn main(test args) {
     loop {
         a cool

@@ -1,9 +1,6 @@
 #![allow(unused_macros)]
 #[cfg(test)]
 use crate::cpu::main::*;
-use crate::lexer_new::*;
-use std::env;
-use std::fs;
 
 macro_rules! new {
     (let $name:ident = new $type:ty;) => {
@@ -116,9 +113,27 @@ fn max_usize() -> () {
 
 #[test]
 fn lexer_new() -> () {
+    use crate::lexer_new::Lexer;
+    use std::fs::read_to_string;
+
     let mut lexer = Lexer::new();
     let code =
-        fs::read_to_string("./src/testing.rusm").expect("Should have been able to read the file");
+        read_to_string("./src/testing.rusm").expect("Should have been able to read the file");
     lexer.parse(code);
-    println!("{:#?}", lexer);
+    println!("{:#?}", lexer.tmp_ast);
+}
+
+#[test]
+fn split() {
+    let test = vec![
+        vec!["loop".to_string(), "{".to_string()],
+        vec!["prnt".to_string(), "A".to_string()],
+        vec!["}".to_string()],
+    ];
+    let mut split: Vec<String> = vec![];
+    for x in test {
+        split.push(x.join(" "));
+    }
+    assert_eq!(split, vec!["loop {", "prnt A", "}"]);
+    //let mut braces = vec![];
 }
