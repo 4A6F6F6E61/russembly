@@ -2,11 +2,12 @@ global gtest = 10
 const ctest = 20
 
 fn main(test args) {
-    loop {
-        a cool
-    }
+    let test = 10
+    let idk = 1
 }
 # test test test test
 loop fn main(test args) {
-    a cool
+    loop {
+        a cool
+    }
 }

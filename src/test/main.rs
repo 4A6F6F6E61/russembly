@@ -106,7 +106,7 @@ fn max_usize() -> () {
     };
 
     for i in 0..usize::BITS {
-        cpu.setb(format!("P0^{}", i));
+        cpu.setb(format!("P0^{i}"));
     }
     assert_eq!(cpu.get_port(0), usize::MAX) // 18446744073709551615
 }
@@ -120,7 +120,7 @@ fn lexer_new() -> () {
     let code =
         read_to_string("./src/testing.rusm").expect("Should have been able to read the file");
     lexer.parse(code);
-    println!("{:#?}", lexer.tmp_ast);
+    println!("{:#?}", lexer.ast);
 }
 
 #[test]

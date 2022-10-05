@@ -14,6 +14,7 @@ crate-type = ["cdylib"]
 [dependencies]
 num = "0.4.0"
 conv = "0.3.3"
+serde = {version = "1.0.145", features = ["derive"]}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 indicatif = "0.17.1"

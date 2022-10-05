@@ -1,15 +1,19 @@
 #![allow(dead_code)]
-use crate::{
-    cpu::{lexer_error, printx, CPUType, PrintT},
-    log,
-};
+/* ### import logic for progress bar ###
 #[cfg(not(target_arch = "wasm32"))]
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 #[cfg(not(target_arch = "wasm32"))]
-use std::fmt::Write;
-use std::{collections::HashMap, vec};
+use std::fmt::Write;*/
+use {
+    crate::{
+        cpu::{lexer_error, printx, CPUType, PrintT},
+        log,
+    },
+    serde::{Deserialize, Serialize},
+    std::vec,
+};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Token {
     Function(Function),
     LoopFunction(Function),
@@ -18,9 +22,9 @@ pub enum Token {
     Global(Let),
     Var(Let),
     Number(CPUType),
-    String(&'static str),
-    OpCode(&'static str),
-    Port(&'static str),
+    String(String),
+    OpCode(String),
+    Port(String),
     Comment(String),
     Stack,
     Accumulator,
@@ -28,16 +32,16 @@ pub enum Token {
     Generic,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Line {
     pub tokens: Vec<Token>,
-    pub as_string: &'static str,
+    pub as_string: String,
 }
 
 // -----------------------------------------------------------------------
 // Token structs
 // -----------------------------------------------------------------------
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Function {
     pub name: String,
     pub arguments: Vec<String>,
@@ -45,12 +49,12 @@ pub struct Function {
     pub tmp_lines: Vec<Vec<String>>,
     pub start_ln: i32,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Loop {
     pub lines: Vec<Line>,
     pub tmp_lines: Vec<Vec<String>>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Let {
     pub name: String,
     pub value: String,
@@ -59,14 +63,13 @@ pub struct Let {
 // Lexer structs
 // -----------------------------------------------------------------------
 #[cfg(not(target_arch = "wasm32"))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Lexer {
     pub tmp_ast: Vec<Token>,
     pub ast: Vec<Token>,
     strings: Vec<Vec<String>>,
-    progress_bar: ProgressBar,
+    //progress_bar: ProgressBar,
     brackets: Brackets,
-    syntax: HashMap<&'static str, &'static str>,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -76,10 +79,9 @@ pub struct Lexer {
     pub ast: Vec<Token>,
     strings: Vec<Vec<String>>,
     brackets: Brackets,
-    syntax: HashMap<&'static str, &'static str>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Brackets {
     pub round: i32,
     pub square: i32,
@@ -90,24 +92,17 @@ pub struct Brackets {
 // -----------------------------------------------------------------------
 impl Lexer {
     pub fn new() -> Lexer {
-        let syntax = HashMap::from([
-            ("function", "fn"),
-            ("loop", "loop"),
-            ("open_braces", "{"),
-            ("close_braces", "}"),
-        ]);
         #[cfg(not(target_arch = "wasm32"))]
         return Lexer {
             tmp_ast: vec![],
             ast: vec![],
             strings: vec![],
-            progress_bar: ProgressBar::new(10000),
+            //progress_bar: ProgressBar::new(10000),
             brackets: Brackets {
                 round: 0,
                 square: 0,
                 braces: 0,
             },
-            syntax,
         };
         #[cfg(target_arch = "wasm32")]
         Lexer {
@@ -119,13 +114,12 @@ impl Lexer {
                 square: 0,
                 braces: 0,
             },
-            syntax,
         }
     }
     // --------------------------------
     // Progressbar setup
     // --------------------------------
-    #[cfg(not(target_arch = "wasm32"))]
+    /*#[cfg(not(target_arch = "wasm32"))]
     pub fn setup_pb(&mut self) {
         self.progress_bar.set_style(
             ProgressStyle::with_template(
@@ -142,7 +136,7 @@ impl Lexer {
     pub fn finish_pb(&mut self) {
         self.progress_bar
             .finish_with_message("Finished parsing tokens");
-    }
+    }*/
     // --------------------------------
     // String vector generation
     // --------------------------------
@@ -189,7 +183,11 @@ impl Lexer {
         for node in self.tmp_ast.clone() {
             match node {
                 Token::Function(func) => {
-                    self.low_level(func.tmp_lines, func.start_ln);
+                    let f = Token::Function(Function {
+                        lines: self.low_level(func.tmp_lines.clone(), func.start_ln.clone()),
+                        ..func
+                    });
+                    self.ast.push(f);
                 }
                 _ => {
                     self.ast.push(node.to_owned());
@@ -376,13 +374,16 @@ impl Lexer {
         // ------------------------------
     }
 
-    pub fn low_level(&mut self, code: Vec<Vec<String>>, start_ln: i32) -> Vec<Token> {
-        let mut tokens = vec![];
+    pub fn low_level(&mut self, code: Vec<Vec<String>>, start_ln: i32) -> Vec<Line> {
+        let mut lines = vec![];
+        let mut as_string: String;
         let mut line_iter = code.iter().peekable();
         let mut line_number = start_ln;
         while line_iter.peek().is_some() {
+            let mut tokens = vec![];
             line_number += 1;
             let next_line = line_iter.next().unwrap();
+            as_string = next_line.join(" ");
             let mut string_iter = next_line.iter().peekable();
             while string_iter.peek().is_some() {
                 match string_iter.next().unwrap().as_str() {
@@ -394,7 +395,7 @@ impl Lexer {
                             (string_iter.next(), string_iter.next(), string_iter.next())
                         {
                             if equals == "=" {
-                                self.tmp_ast.push(Token::Var(Let {
+                                tokens.push(Token::Var(Let {
                                     name: name.to_owned(),
                                     value: value.to_owned(),
                                 }))
@@ -410,8 +411,9 @@ impl Lexer {
                     _ => {}
                 }
             }
+            lines.push(Line { tokens, as_string });
         }
-        tokens
+        lines
     }
 
     pub fn parse_line() {}
