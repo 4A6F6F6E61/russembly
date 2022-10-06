@@ -4,6 +4,12 @@ const ctest = 20
 fn main(test args) {
     let test = 10
     let idk = 1
+    if test then
+        let ifidk = 69
+        if test2 and test then
+            let idk2 = 99
+        end
+    end
 }
 # test test test test
 loop fn main(test args) {

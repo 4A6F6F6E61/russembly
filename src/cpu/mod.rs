@@ -99,8 +99,18 @@ macro_rules! log {
         printx(PrintT::Error, format!($($format)*).as_str());
     };
     (Error, $($str:tt)*) => {
+        //use crate::cpu::{printx, PrintT};
+        printx(PrintT::Error, $($str)*);
+    };
+    (LexerError, f($($format:tt)*)) => {
+        use crate::cpu::{printx, PrintT};
+        printx(PrintT::Error, format!($($format)*).as_str());
+        lexer_error();
+    };
+    (LexerError, $($str:tt)*) => {
         use crate::cpu::{printx, PrintT};
         printx(PrintT::Error, $($str)*);
+        lexer_error();
     };
     (Info, f($($format:tt)*)) => {
         use crate::cpu::{printx, PrintT};

@@ -26,6 +26,12 @@ pub enum Token {
     OpCode(String),
     Port(String),
     Comment(String),
+    If(If),
+    End(i32),
+    OpenSqBr(i32),
+    CloseSqBr(i32),
+    OpenRoBr(i32),
+    CloseRoBr(i32),
     Stack,
     Accumulator,
     Comma,
@@ -58,6 +64,11 @@ pub struct Loop {
 pub struct Let {
     pub name: String,
     pub value: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct If {
+    pub condition: String,
+    pub id: i32,
 }
 // -----------------------------------------------------------------------
 // Lexer structs
@@ -194,6 +205,7 @@ impl Lexer {
                 }
             }
         }
+        if self.brackets.braces > 0 {}
     }
     pub fn top_level(&mut self, code: String) {
         self.generate_strings(code); // generates a 2D string vector
@@ -222,13 +234,14 @@ impl Lexer {
                             (string_iter.next(), string_iter.next())
                         {
                             if fn_name == "(" {
-                                log!(Error, f("Expected function name at line {line_number}"));
+                                log!(
+                                    LexerError,
+                                    f("Expected function name at line {line_number}")
+                                );
                                 syntax_fn();
-                                lexer_error();
                             } else if fn_op_br != "(" {
-                                log!(Error, f("Expected opening bracket after function name but got `{fn_op_br}` at line {line_number}"));
+                                log!(LexerError, f("Expected opening bracket after function name but got `{fn_op_br}` at line {line_number}"));
                                 syntax_fn();
-                                lexer_error();
                             } else {
                                 self.brackets.round += 1;
                                 let mut arguments: Vec<String> = vec![];
@@ -240,17 +253,15 @@ impl Lexer {
                                     } else if string_iter.peek().unwrap().as_str() == "(" {
                                         self.brackets.round += 1;
                                         log!(
-                                            Error,
+                                            LexerError,
                                             f("Unexpected opening bracket at line {line_number}")
                                         );
-                                        lexer_error();
                                     }
                                     arguments.push(string_iter.next().unwrap().to_string());
                                 }
                                 if let Some(op_braces) = string_iter.next() {
                                     if op_braces != "{" {
-                                        log!(Error, f("Expected opening braces but found `{op_braces}` at line {line_number}"));
-                                        lexer_error();
+                                        log!(LexerError, f("Expected opening braces but found `{op_braces}` at line {line_number}"));
                                     } else {
                                         self.brackets.braces += 1;
                                         let mut fn_body: Vec<Vec<String>> = vec![];
@@ -321,13 +332,11 @@ impl Lexer {
                                     }
                                 } else {
                                     log!(Error, f("Expected opening braces at line {line_number}"));
-                                    lexer_error();
                                 }
                             }
                         } else {
-                            log!(Error, f("Expected function name and opening bracket at line {line_number}"));
+                            log!(LexerError, f("Expected function name and opening bracket at line {line_number}"));
                             syntax_fn();
-                            lexer_error();
                         }
                     }
                     "#" => {
@@ -359,11 +368,11 @@ impl Lexer {
                                     }))
                                 }
                             } else {
-                                log!(Error, f("Expected `=` at line {line_number}"));
+                                log!(LexerError, f("Expected `=` at line {line_number}"));
                                 syntax();
                             }
                         } else {
-                            log!(Error, f("Wrong Syntax at line {line_number}"));
+                            log!(LexerError, f("Wrong Syntax at line {line_number}"));
                             syntax();
                         }
                     }
@@ -386,7 +395,8 @@ impl Lexer {
             as_string = next_line.join(" ");
             let mut string_iter = next_line.iter().peekable();
             while string_iter.peek().is_some() {
-                match string_iter.next().unwrap().as_str() {
+                let string = string_iter.next().unwrap().as_str();
+                match string {
                     "let" => {
                         let syntax = || {
                             log!(Syntax, "let `name` = `value`");
@@ -394,21 +404,102 @@ impl Lexer {
                         if let (Some(name), Some(equals), Some(value)) =
                             (string_iter.next(), string_iter.next(), string_iter.next())
                         {
-                            if equals == "=" {
+                            if value.contains("[") && !value.contains("]") {
+                                log!(LexerError, f("Creating a multiline Array with the let binding is not supported. Line: {line_number}"));
+                            } else if equals == "=" {
                                 tokens.push(Token::Var(Let {
                                     name: name.to_owned(),
                                     value: value.to_owned(),
                                 }))
                             } else {
-                                log!(Error, f("Expected `=` at line {line_number}"));
+                                log!(LexerError, f("Expected `=` at line {line_number}"));
                                 syntax();
                             }
                         } else {
-                            log!(Error, f("Wrong Syntax at line {line_number}"));
+                            log!(LexerError, f("Wrong Syntax at line {line_number}"));
                             syntax();
                         }
                     }
-                    _ => {}
+                    "if" => {
+                        let syntax = || {
+                            log!(Syntax, "\nif `condition` then\n   `code`\nend");
+                        };
+                        let mut condition_v: Vec<String> = vec![];
+                        let mut then: bool = false;
+                        while string_iter.peek().is_some() {
+                            let nt = string_iter.next().unwrap();
+                            if nt == "then" {
+                                then = true;
+                                self.brackets.braces += 1;
+                                break;
+                            }
+                            condition_v.push(nt.to_owned());
+                        }
+                        if !then {
+                            log!(LexerError, f("Expected then at line {line_number}"));
+                            syntax();
+                        } else {
+                            if condition_v.is_empty() {
+                                log!(LexerError, f("Expected consition at line {line_number}"));
+                                syntax();
+                            } else {
+                                tokens.push(Token::If(If {
+                                    condition: condition_v.join(" "),
+                                    id: self.brackets.braces,
+                                }));
+                            }
+                        }
+                    }
+                    "end" => {
+                        tokens.push(Token::End(self.brackets.braces));
+                        self.brackets.braces -= 1;
+                    }
+                    "[" => {
+                        tokens.push(Token::OpenSqBr(self.brackets.square));
+                        self.brackets.square += 1;
+                    }
+                    "]" => {
+                        tokens.push(Token::OpenSqBr(self.brackets.square));
+                        self.brackets.square -= 1;
+                    }
+                    "(" => {
+                        tokens.push(Token::OpenRoBr(self.brackets.round));
+                        self.brackets.round += 1;
+                    }
+                    ")" => {
+                        tokens.push(Token::OpenRoBr(self.brackets.round));
+                        self.brackets.round -= 1;
+                    }
+                    "," => {
+                        tokens.push(Token::Comma);
+                    }
+                    _ => {
+                        if let Some(nt) = string_iter.next() {
+                            match nt.as_str() {
+                                "=" => {
+                                    let syntax = || {
+                                        log!(Syntax, "`var` = `expr`");
+                                    };
+                                    //tokens.push(Token::Var(nt));
+                                    if let Some(_) = string_iter.peek() {
+                                    } else {
+                                        log!(
+                                            LexerError,
+                                            f("Expected Expression at line {line_number}")
+                                        );
+                                        syntax();
+                                    }
+                                }
+                                "(" => {}
+                                _ => {}
+                            }
+                        } else {
+                            log!(
+                                LexerError,
+                                f("Unexpected instruction at line {line_number}")
+                            );
+                        }
+                    }
                 }
             }
             lines.push(Line { tokens, as_string });
